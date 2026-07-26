@@ -9,7 +9,6 @@ Um *pipeline* robusto, modular e altamente otimizado para otimização estocást
 ## 🚀 Principais Características
 
 * **Arquitetura Modular:** Configuração baseada em ponteiros de função e estruturas dinâmicas, permitindo a troca instantânea de funções de avaliação (benchmark) e parâmetros evolutivos.
-* **Paralelismo Nativo:** Avaliação de *fitness* e operadores genéticos paralelizados via `#pragma omp`, explorando ao máximo processadores *multicore*.
 * **Segurança e Estabilidade:** Gerenciamento de recursos rigoroso utilizando as macros e tipagens da GLib (`g_autoptr`, `g_new0`, `g_free`), garantindo execução contínua sem vazamentos de memória (*memory leaks*).
 * **Visualização em Tempo Real:** Integração direta com o **Gnuplot** para plotagem automática da evolução do *fitness*, decaimento da dispersão e animação 2D da população a cada geração.
 
