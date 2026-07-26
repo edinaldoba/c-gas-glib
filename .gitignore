@@ -1,0 +1,20 @@
+# Binários e Executáveis
+gas
+*.o
+*.so
+*.a
+*.out
+
+# Arquivos de dados do Gnuplot
+gnuplot/*.pts
+gnuplot/*.txt
+!gnuplot/.gitkeep
+
+# IDES e Editores de Código
+.vscode/
+.idea/
+*.swp
+*~
+
+# Logs e arquivos temporários
+*.log
