@@ -11,6 +11,8 @@ gnuplot/*.txt
 !gnuplot/.gitkeep
 
 # IDES e Editores de Código
+sincronizar.sh
+img_teste.png
 .vscode/
 .idea/
 *.swp

@@ -14,10 +14,6 @@
 
 
 
-typedef struct {
-	double *x;
-} GasGenitores;
-
 
 void gas_gerar_sementes( guint32 *sementes ) {
    g_return_if_fail( sementes );
@@ -40,7 +36,7 @@ void gas_gerar_sementes( guint32 *sementes ) {
 }
 
 
-static GasPopulacao *gas_alocar_populacao( const int n_pop, const int n_dim ) {
+GasPopulacao *gas_alocar_populacao( const int n_pop, const int n_dim ) {
    g_return_val_if_fail( n_pop>0 && n_dim>0, NULL );
 
    GasPopulacao *pop = g_new0( GasPopulacao, n_pop );
@@ -50,7 +46,7 @@ static GasPopulacao *gas_alocar_populacao( const int n_pop, const int n_dim ) {
    return pop;
 }
 
-static GasGenitores *gas_alocar_genitores( const int n_gen, const int n_dim ) {
+GasGenitores *gas_alocar_genitores( const int n_gen, const int n_dim ) {
    g_return_val_if_fail( n_gen>0 && n_dim>0, NULL );
 
    GasGenitores *gen = g_new0( GasGenitores, n_gen );
@@ -60,25 +56,29 @@ static GasGenitores *gas_alocar_genitores( const int n_gen, const int n_dim ) {
    return gen;
 }
 
-static void gas_liberar_populacao( GasPopulacao *pop, const int n_pop ) {
+void gas_liberar_populacao( GasPopulacao *pop, const int n_pop ) {
    g_return_if_fail( pop );
    for ( int i = 0; i < n_pop; i++ ) {
-      g_free( pop[i].x );
+      if ( pop[i].x != NULL ) {
+         g_free( pop[i].x );
+      }
    }
    g_free( pop );
 }
 
-static void gas_liberar_genitores( GasGenitores *gen, const int n_gen ) {
+void gas_liberar_genitores( GasGenitores *gen, const int n_gen ) {
    g_return_if_fail( gen );
    for ( int i = 0; i < n_gen; i++ ) {
-      g_free( gen[i].x );
+      if ( gen[i].x != NULL ) {
+         g_free( gen[i].x );
+      }
    }
    g_free( gen );
 }
 
 
 
-static void gas_populacao_inicial( GasPopulacao *pop, const GasParametros *par, const GasLimites *lim ) {
+void gas_populacao_inicial( GasPopulacao *pop, const GasParametros *par, const GasLimites *lim ) {
    g_return_if_fail( pop && par && lim );
 
    for ( int i = 0; i < par->n_pop; i++ ) {
@@ -90,7 +90,7 @@ static void gas_populacao_inicial( GasPopulacao *pop, const GasParametros *par, 
 
 
 
-static void gas_torneio( const GasPopulacao *pop, GasGenitores *gen, const int n_dim, const GasParametros *par,
+void gas_torneio( const GasPopulacao *pop, GasGenitores *gen, const int n_dim, const GasParametros *par,
                          int(gas_comparar)(const void* a, const void* b) )
 {
    g_return_if_fail( pop && gen && par && gas_comparar );
@@ -111,7 +111,7 @@ static void gas_torneio( const GasPopulacao *pop, GasGenitores *gen, const int n
 
 
 
-static void gas_crossover_aritmetico( GasPopulacao *pop, const GasGenitores *gen, const int n_dim, const GasParametros *par ) {
+void gas_crossover_aritmetico( GasPopulacao *pop, const GasGenitores *gen, const int n_dim, const GasParametros *par ) {
    g_return_if_fail( pop && gen && par );
 
    for ( int i = 0; i < par->n_gen - 1; i += 2 ) {
@@ -152,7 +152,7 @@ static void gas_crossover_aritmetico( GasPopulacao *pop, const GasGenitores *gen
 
 
 // GG, eu adaptei o meu coeficiente de dispersão lindo e maravilhoso na mutação creep. Ficou perfeito!
-static void gas_mutacao_creep( GasPopulacao *pop, const double *coef_disp, const GasLimites *lim, const GasParametros *par ) {
+void gas_mutacao_creep( GasPopulacao *pop, const double *coef_disp, const GasLimites *lim, const GasParametros *par ) {
    g_return_if_fail( pop && coef_disp && lim && par );
 
    for ( int i = 0; i < par->n_gen; i++ ) {
@@ -175,9 +175,7 @@ static void gas_mutacao_creep( GasPopulacao *pop, const double *coef_disp, const
    }
 }
 
-static void gas_coeficiente_dispersao( const GasPopulacao *pop, double *coef_disp,
-                                       const GasParametros *par, const int n_dim )
-{
+void gas_coeficiente_dispersao( const GasPopulacao *pop, double *coef_disp, const GasParametros *par, const int n_dim ) {
    g_return_if_fail( pop && coef_disp && par );
 
    for ( int j = 0; j < n_dim; j++ ) {
@@ -290,7 +288,7 @@ double F10( const double *x, const int n_dim ) { // Função de Rastrigin I
 }
 
 
-static double gas_max( const double *array, int tam ) {
+double gas_max( const double *array, int tam ) {
    g_return_val_if_fail( array && tam>0, 0.0 );
 
    gdouble max_val = array[0];
