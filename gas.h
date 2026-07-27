@@ -6,7 +6,7 @@
 
 
 typedef struct {
-	int n_pop, n_gen, n_tor;
+	int n_pop, n_gen, n_tor, n_obj;
 	double p_rec, p_mut, peso_disp, toleracia;
 	GRand *rand; // <- Ponteiro para o gerador de números aleatórios
 } GasParametros;

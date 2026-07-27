@@ -3,24 +3,6 @@
 
 #include "gas.h"
 
-// ============================================================================
-// ESTRUTURAS DO ALGORITMO GENÉTICO MULTIOBJETIVO (COEVOLUÇÃO)
-// ============================================================================
-
-// O problema deve se adaptar aos gas e não o contrário.
-// lim[0]->n_dim = lim[1]->n_dim = lim[2]->n_dim = lim[3]->n_dim
-typedef struct {
-    GasLimites *lim;
-} VgasLimites;
-
-typedef struct {
-    GasPopulacao **pop;
-    GasPopulacao  *elite;
-} VgasPopulacao;
-
-typedef struct {
-    GasGenitores **gen;
-} VgasGenitores;
 
 // ============================================================================
 // ESTRUTURAS DE VISÃO COMPUTACIONAL
@@ -38,13 +20,10 @@ typedef struct {
 // ASSINATURAS DE FUNÇÕES
 // ============================================================================
 
-void liberar_matriz_pixels( int **matriz, int nrow );
-
-void imread_gray( ImagemCinza *IMG, const char *arquivo );
-
-GasPopulacao *v_gas_pipeline( GasParametros *par,
-                              VgasLimites *v_lim,
-                              double (*v_gas_avaliar)(const double*, GasPopulacao*, const int, ImagemCinza *img),
+GasPopulacao *v_gas_pipeline( const ImagemCinza *img,
+                              const GasParametros *par,
+                              const GasLimites *lim,
+                              double (*v_gas_avaliar)(const double*, GasPopulacao*, const int, const ImagemCinza *img),
                               int (*gas_comparar)(const void* a, const void* b) );
 
 #endif // V_GAS_H
