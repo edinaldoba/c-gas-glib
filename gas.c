@@ -11,6 +11,7 @@
 #include <stdbool.h>
 
 #include "gas.h"
+#include "matriz.h"
 
 
 
@@ -115,6 +116,61 @@ void gas_populacao_inicial( GasPopulacao *pop, const GasParametros *par, const G
 
 
 
+
+void gas_projetar_pca( const GasPopulacao *pop, GasPopulacao *pop_2d, int n_pop, int n_dim ) {
+   g_return_if_fail( pop != NULL && pop_2d != NULL );
+   g_return_if_fail( n_pop > 1 && n_dim > 2 ); // O PCA só faz sentido se dimensão > 2 e pop > 1
+
+   // 1. Alocação das matrizes de trabalho usando sua biblioteca
+   Matrix X           = mat_new( n_pop, n_dim );
+   Matrix media       = mat_new( 1, n_dim );
+   Matrix Cov         = mat_new( n_dim, n_dim );
+   Matrix autovalores = mat_new( n_dim, 1 );
+   Matrix autovetores = mat_new( n_dim, n_dim );
+   Matrix X_2d        = mat_new( n_pop, 2 );
+
+   // 2. Extração dos dados da struct GasPopulacao para a Matriz contígua X
+   for ( int i = 0; i < n_pop; i++ ) {
+      for ( int j = 0; j < n_dim; j++ ) {
+         X.data[i * n_dim + j] = pop[i].x[j];
+      }
+   }
+
+   // 3. Pipeline PCA Purista de Alto Desempenho
+   mat_centralizar_na_origem( X, media );
+
+   // Cov = X^T * X
+   mat_transpose_by_mul( X, Cov );
+   // Ajuste para covariância amostral (divide por n - 1)
+   mat_mul_esc_inplace( Cov, 1.0 / (double)( n_pop - 1 ) );
+
+   // Extração dos Autovalores e Autovetores via LAPACKE
+   mat_eigen_symm( Cov, autovalores, autovetores );
+
+   // Projeção nos 2 maiores autovetores
+   mat_projetar_pca_2d( X, autovetores, X_2d );
+
+   // 4. Mapeamento de volta para a struct de saída (pop_2d)
+   for ( int i = 0; i < n_pop; i++ ) {
+      // Importante: Assumimos que pop_2d[i].x já está previamente alocado com tamanho 2
+      pop_2d[i].x[0] = X_2d.data[i * 2 + 0]; // Eixo Principal 1 (Maior variância)
+      pop_2d[i].x[1] = X_2d.data[i * 2 + 1]; // Eixo Principal 2 (Segunda maior variância)
+
+      // Copiar o fitness é excelente caso você queira colorir os pontos no Gnuplot por qualidade!
+      pop_2d[i].fitness = pop[i].fitness;
+   }
+
+   // 5. Limpeza de memória (Assumindo que sua struct Matrix usa free nativo)
+   free( X.data );
+   free( media.data );
+   free( Cov.data );
+   free( autovalores.data );
+   free( autovetores.data );
+   free( X_2d.data );
+}
+
+
+
 void gas_torneio( const GasPopulacao *pop, GasGenitores *gen, const int n_dim, const GasParametros *par,
                   int( gas_comparar )( const void* a, const void* b ) ) {
    g_return_if_fail( pop && gen && par && gas_comparar );
@@ -157,22 +213,22 @@ void gas_crossover_aritmetico( GasPopulacao *pop, const GasGenitores *gen, const
 }
 
 
-// static void gas_mutacao_direcional( GasPopulacao *pop, const double *coef_disp, const int n_dim, const GasParametros *par ) {
-//    g_return_if_fail( pop && coef_disp && par );
-//
-//    double fator_escala = 1.0 / sqrt( n_dim );
-//
-//    for ( int i = 0; i < par->n_gen; i++ ) {
-//       double rnd_mut = g_rand_double_range( par->rand, 0.0, 1.0 );
-//
-//       if ( rnd_mut < par->p_mut ) {
-//          for ( int j = 0; j < n_dim; j++ ) {
-//             double rnd_dir = g_rand_double_range( par->rand, -1.0, 1.0 );
-//             pop[i].x[j] = pop[i].x[j] + rnd_dir * coef_disp[j] * fator_escala;
-//          }
-//       }
-//    }
-// }
+void gas_mutacao_direcional( GasPopulacao *pop, const double *coef_disp, const int n_dim, const GasParametros *par ) {
+   g_return_if_fail( pop && coef_disp && par );
+
+   double fator_escala = 1.0 / sqrt( n_dim );
+
+   for ( int i = 0; i < par->n_gen; i++ ) {
+      double rnd_mut = g_rand_double_range( par->rand, 0.0, 1.0 );
+
+      if ( rnd_mut < par->p_mut ) {
+         for ( int j = 0; j < n_dim; j++ ) {
+            double rnd_dir = g_rand_double_range( par->rand, -1.0, 1.0 );
+            pop[i].x[j] = pop[i].x[j] + rnd_dir * coef_disp[j] * fator_escala;
+         }
+      }
+   }
+}
 
 
 // GG, eu adaptei o meu coeficiente de dispersão lindo e maravilhoso na mutação creep. Ficou perfeito!
@@ -311,6 +367,44 @@ double F10( const double *x, const int n_dim ) { // Função de Rastrigin I
    return ( A * n_dim ) + soma;
 }
 
+double F11( const double *x, const int n_dim ) { // Função de Schwefel
+   g_return_val_if_fail( x && n_dim > 0, 0.0 );
+
+   const double V = 418.9829;
+   double soma = 0.0;
+
+   // Iteramos sobre as dimensões (n_dim) para suportar ND, além de 2D
+   for ( int j = 0; j < n_dim; j++ ) {
+      // 1. Utilizamos fabs(x[j]) para obter o módulo |x_i| garantindo compatibilidade com double
+      // 2. sqrt() extrai a raiz quadrada do módulo
+      // 3. Multiplicamos -x[j] pelo seno do resultado
+      soma += -x[j] * sin( sqrt( fabs( x[j] ) ) );
+   }
+
+   return ( V * n_dim ) + soma;
+}
+
+double F13( const double *x, const int n_dim ) { // Função de Shubert
+   g_return_val_if_fail( x && n_dim > 0, 0.0 );
+
+   double produtorio = 1.0;
+
+   // Iteramos sobre as dimensões (i)
+   for ( int i = 0; i < n_dim; i++ ) {
+      double somatorio_interno = 0.0;
+
+      // Somatório interno j de 1 a 5
+      for ( int j = 1; j <= 5; j++ ) {
+         // j é convertido implicitamente para double nas operações
+         somatorio_interno += j * cos( ( j + 1 ) * x[i] + j );
+      }
+
+      produtorio *= somatorio_interno;
+   }
+
+   return produtorio;
+}
+
 
 
 
@@ -356,11 +450,26 @@ void gas_display_gnuplot( const GasLimites *lim, const int geracao ) {
       fprintf( p_plot, "set yrange [%.1f:%.1f]\n", lim->ini[1], lim->fim[1] );
       fprintf( p_plot, "set size ratio -1\n" );
       fprintf( p_plot, "set pointsize 2\n" );
+      // Exemplo: define a escala de cor fixa entre o pior e o melhor fitness conhecido
+      fprintf( p_plot, "set cbrange [0:1]\n" ); // Ajuste para os limites do seu fitness
+      fprintf( p_plot, "set colorbox\n" );        // Exibe a barra lateral de cores
+
+      // fprintf( p_plot, "set object 1 rectangle from graph 0,0 to graph 1,1 behind fillcolor rgb '#7f7f7f' fillstyle solid 1.0\n" );
+      // // Ajusta a cor dos eixos/linhas para branco para dar contraste com o fundo escuro
+      // fprintf( p_plot, "set border lc rgb 'white'\n" );
+      // fprintf( p_plot, "set key tc rgb 'white'\n" );
+      // fprintf( p_plot, "set tics tc rgb 'white'\n" );
+
+      // Gradiente clássico estilo Jet: 0 = Azul (mínimo), 1 = Vermelho (máximo)
+      fprintf( p_plot, "set palette defined ( 0 'dark-blue', 0.5 'yellow', 1.0 'red' )\n" );
 
       // Usamos o laço nativo do gnuplot para iterar sobre os arquivos .pts gerados
       fprintf( p_plot, "do for [i=0:%d] {\n", geracao );
-      fprintf( p_plot, "    plot sprintf('geracao_%%d.pts', i) title sprintf('Geração: %%d', i) with points pt 1\n" );
-      fprintf( p_plot, "    pause 0.05\n" );
+      // 1:2:3 -> X na col 1, Y na col 2, Cor (Fitness) na col 3
+      // pt 7 -> ponto preenchido
+      // palette -> aplica o mapa de cores ativo no Gnuplot conforme o fitness da col 3
+      fprintf( p_plot, "    plot sprintf('geracao_%%d.pts', i) using 1:2:3 title sprintf('Geração: %%d', i) with points pt 1 palette\n" );
+      fprintf( p_plot, "    pause 0.015\n" );
       fprintf( p_plot, "}\n" );
 
       fclose( p_plot );
@@ -377,7 +486,7 @@ void gas_gravar_pontos( const GasPopulacao *pop, const int n_pop, const int gera
    FILE *p_geracao = fopen( arquivo, "a" );
    if ( p_geracao ) {
       for ( int i = 0; i < n_pop; i++ ) {
-         fprintf( p_geracao, "%.8f %.8f\n", pop[i].x[0], pop[i].x[1] );
+         fprintf( p_geracao, "%.8f %.8f %.8f\n", pop[i].x[0], pop[i].x[1], pop[i].fitness );
       }
       fclose( p_geracao );
    }
@@ -426,8 +535,14 @@ GasPopulacao gas_pipeline( const GasParametros *par, const GasLimites *lim, doub
    dispersao_media = gas_mean( coef_disp, lim->n_dim );
    fprintf( p_dispersao, "%d %.8f\n", geracao, dispersao_media );
    fprintf( p_fitness, "%d %.8f\n", geracao, pop[par->n_pop - 1].fitness );
-   gas_display_terminal( &pop[par->n_pop - 1], lim->n_dim, dispersao_media, geracao );
-   gas_gravar_pontos( pop, par->n_pop, geracao );
+   GasPopulacao *pop_2d = NULL;
+   if ( lim->n_dim > 2 ) {
+      pop_2d = gas_alocar_populacao( par->n_pop, 2 );
+      gas_projetar_pca( pop, pop_2d, par->n_pop, lim->n_dim );
+      gas_gravar_pontos( pop_2d, par->n_pop, geracao );
+   } else {
+      gas_gravar_pontos( pop, par->n_pop, geracao );
+   }
    //-------------------------------------------------------//
 
    do {
@@ -448,16 +563,22 @@ GasPopulacao gas_pipeline( const GasParametros *par, const GasLimites *lim, doub
       //--------------- FEEDBACK VISUAL ------------------------//
       fprintf( p_dispersao, "%d %.8f\n", geracao, dispersao_media );
       fprintf( p_fitness, "%d %.8f\n", geracao, pop[par->n_pop - 1].fitness );
-      gas_display_terminal( &pop[par->n_pop - 1], lim->n_dim, dispersao_media, geracao );
-      gas_gravar_pontos( pop, par->n_pop, geracao );
+      if ( lim->n_dim > 2 ) {
+         gas_projetar_pca( pop, pop_2d, par->n_pop, lim->n_dim );
+         gas_gravar_pontos( pop_2d, par->n_pop, geracao );
+      } else {
+         gas_gravar_pontos( pop, par->n_pop, geracao );
+      }
       //--------------------------------------------------------//
 
    } while ( dispersao_media > par->toleracia && geracao < 1000 ); // <--- FIM DO LOOP WHILE
 
    //--------------- FEEDBACK VISUAL ------------------------//
+   gas_display_terminal( &pop[par->n_pop - 1], lim->n_dim, dispersao_media, geracao );
    gas_display_gnuplot( lim, geracao );
    if ( p_fitness )   fclose( p_fitness );
    if ( p_dispersao ) fclose( p_dispersao );
+   if ( pop_2d ) gas_liberar_populacao( pop_2d, par->n_pop );
    //--------------------------------------------------------//
 
    melhor.fitness = pop[par->n_pop - 1].fitness;

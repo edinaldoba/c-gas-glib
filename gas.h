@@ -2,7 +2,6 @@
 #define GAS_H
 
 #include <glib.h>
-#include <omp.h>
 
 
 typedef struct {
@@ -40,18 +39,23 @@ void gas_liberar_genitores( GasGenitores *gen, const int n_gen );
 
 void gas_populacao_inicial( GasPopulacao *pop, const GasParametros *par, const GasLimites *lim );
 
+void gas_projetar_pca( const GasPopulacao *pop, GasPopulacao *pop_2d, int n_pop, int n_dim );
+
 void gas_torneio( const GasPopulacao *pop, GasGenitores *gen, const int n_dim, const GasParametros *par,
                   int( gas_comparar )( const void* a, const void* b ) );
 void gas_crossover_aritmetico( GasPopulacao *pop, const GasGenitores *gen, const int n_dim, const GasParametros *par );
+void gas_mutacao_direcional( GasPopulacao *pop, const double *coef_disp, const int n_dim, const GasParametros *par );
 void gas_mutacao_creep( GasPopulacao *pop, const double *coef_disp, const GasLimites *lim, const GasParametros *par );
 void gas_coeficiente_dispersao( const GasPopulacao *pop, double *coef_disp, const GasParametros *par, const int n_dim );
 
 int gas_comparar_objetivo_max( const void* a, const void* b );
 int gas_comparar_objetivo_min( const void* a, const void* b );
 
-double F5( const double *x, const int n_dim );
-double F6( const double *x, const int n_dim );
+double F5(  const double *x, const int n_dim );
+double F6(  const double *x, const int n_dim );
 double F10( const double *x, const int n_dim );
+double F11( const double *x, const int n_dim );
+double F13( const double *x, const int n_dim );
 
 void gas_display_gnuplot( const GasLimites *lim, const int geracao );
 void gas_gravar_pontos( const GasPopulacao *pop, const int n_pop, const int geracao );

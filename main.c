@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <omp.h>
+
 #include "gas.h"
 
 
@@ -17,7 +19,9 @@ static void display_tempo( const char *descricao, GTimer *cronometro );
 typedef enum {
    GAS_TESTE_F5,
    GAS_TESTE_F6,
-   GAS_TESTE_F10
+   GAS_TESTE_F10,
+   GAS_TESTE_F11,
+   GAS_TESTE_F13
 } GasTesteId;
 
 
@@ -31,7 +35,7 @@ int main( void ) {
    // =========================================================
    // 2. CHAVE MESTRA: Mude apenas esta variável para alternar o teste
    // =========================================================
-   GasTesteId teste_atual = GAS_TESTE_F6;
+   GasTesteId teste_atual = GAS_TESTE_F10;
 
    // Estruturas base e ponteiros para as funções dinâmicas
    GasParametros par = { .rand = rand_context };
@@ -47,6 +51,7 @@ int main( void ) {
    switch ( teste_atual ) {
    case GAS_TESTE_F5:
       par.n_pop = 120;
+      par.n_tor = 2;
       par.peso_disp = 1.9;
       par.toleracia = 1.0;
 
@@ -60,6 +65,7 @@ int main( void ) {
 
    case GAS_TESTE_F6:
       par.n_pop = 220;
+      par.n_tor = 2;
       par.peso_disp = 1.5;
       par.toleracia = 1.0e-3;
 
@@ -73,6 +79,7 @@ int main( void ) {
 
    case GAS_TESTE_F10:
       par.n_pop = 850;
+      par.n_tor = 2;
       par.peso_disp = 1.0;
       par.toleracia = 1.0e-4;
 
@@ -81,6 +88,34 @@ int main( void ) {
       limite_sup = +6.0;
 
       gas_avaliar = F10;
+      gas_comparar = gas_comparar_objetivo_min;
+      break;
+
+   case GAS_TESTE_F11:
+      par.n_pop = 330;
+      par.n_tor = 2;
+      par.peso_disp = 1.0;
+      par.toleracia = 1.0e-2;
+
+      lim.n_dim = 2;
+      limite_inf = -500.0;
+      limite_sup = +500.0;
+
+      gas_avaliar = F11;
+      gas_comparar = gas_comparar_objetivo_min;
+      break;
+
+   case GAS_TESTE_F13:
+      par.n_pop = 60;
+      par.n_tor = 10;
+      par.peso_disp = 1.0;
+      par.toleracia = 1.0e-4;
+
+      lim.n_dim = 2;
+      limite_inf = -10.0;
+      limite_sup = +10.0;
+
+      gas_avaliar = F13;
       gas_comparar = gas_comparar_objetivo_min;
       break;
 
@@ -93,7 +128,6 @@ int main( void ) {
    // 4. INICIALIZAÇÃO DEPENDENTE (Comum a todos os testes)
    // =========================================================
    par.n_gen = ( int )round( 0.82 * par.n_pop );
-   par.n_tor = 2;
    par.p_rec = 0.75;
    par.p_mut = 0.95;
 

@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <glib.h>
 #include <math.h>
+#include <omp.h>
 
 #include "gas.h"
 #include "v_gas.h"
