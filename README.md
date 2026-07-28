@@ -16,6 +16,9 @@ Um *pipeline* robusto, modular e altamente otimizado para otimização estocást
 
 Além dos operadores clássicos da literatura (Seleção por Torneio, Crossover Aritmético), este repositório traz implementações exclusivas que garantem altíssima taxa de convergência (acima de 99,95%) em funções de teste complexas:
 
+* **Modelagem Matemático-Evolutiva:**
+  * **Teoria dos Jogos (Equilíbrio de Nash):** Coevolução de subpopulações concorrentes implementada em C/GLib.
+  * **Convergência Geométrica (Área de Gauss):** Aplicação da *Shoelace Formula* como operador de fitness para preservação proporcional do quadrilátero.$$A = \frac{1}{2} \left\vert{} \sum_{i=0}^{n-1} (x_i y_{i+1} - x_{i+1} y_i) \right\vert{}$$
 * **Coeficiente de Dispersão Dinâmico:** Uma métrica estatística autoral que mensura o espalhamento da população no espaço de busca em tempo real.
 * **Mutação Direcional Sensível à Dispersão:** Um operador de mutação inédito que calibra o tamanho do passo (*step size*) estocástico com base no Coeficiente de Dispersão, acelerando a exploração inicial e refinando a convergência final.
 * **Mutação Creep Adaptativa:** Um operador clássico que faz uso do Coeficiente de Dispersão para ajustar a magnitude da perturbação gerada de forma dinâmica, respeitando rigorosamente a distância para as fronteiras do espaço de busca.
