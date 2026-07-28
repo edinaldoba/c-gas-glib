@@ -20,13 +20,13 @@ Além dos operadores clássicos da literatura (Seleção por Torneio, Crossover 
   * **Teoria dos Jogos (Equilíbrio de Nash):** Coevolução de subpopulações concorrentes implementada em C/GLib.
   * **Convergência Geométrica (Área de Gauss):** Aplicação da *Shoelace Formula* como operador de fitness para preservação proporcional do quadrilátero.
   
-        $$A = \frac{1}{2} \left\vert{} \sum_{i=0}^{n-1} (x_i y_{i+1} - x_{i+1} y_i) \right\vert{}$$
+  $$A = \frac{1}{2} \left\vert{} \sum_{i=0}^{n-1} (x_i y_{i+1} - x_{i+1} y_i) \right\vert{}$$
   
 * **Visualização Dinâmica N-D via PCA (LAPACKE/CBLAS):**
   * Pipeline nativo de Análise de Componentes Principais (PCA) construído sobre rotinas de álgebra linear de alto desempenho (cblas_dgemm, cblas_dgemv e LAPACKE_dsyevd).
   * Mapeamento estocástico $N\text{D} \to 2\text{D}$ em tempo real via decomposição em autovalores/autovetores da matriz de covariância amostral centralizada:
   
-        $$\mathbf{C} = \frac{1}{N-1} (\mathbf{X} - \bar{\mathbf{X}})^T (\mathbf{X} - \bar{\mathbf{X}})$$
+  $$\mathbf{C} = \frac{1}{N-1} (\mathbf{X} - \bar{\mathbf{X}})^T (\mathbf{X} - \bar{\mathbf{X}})$$
   
   * Permite projetar a hiper-nuvem de indivíduos na direção das duas maiores componentes de variância sem impacto perceptível no tempo de CPU, viabilizando o diagnóstico visual contínuo no Gnuplot para espaços de busca de alta dimensionalidade.
   
