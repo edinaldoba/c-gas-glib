@@ -10,9 +10,13 @@ gnuplot/*.pts
 gnuplot/*.txt
 !gnuplot/.gitkeep
 
+img/*
+!img/img.ppm
+
 # IDES e Editores de Código
+compile_flags.txt
+formatar.sh
 sincronizar.sh
-img_teste.png
 .vscode/
 .idea/
 *.swp
