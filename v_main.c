@@ -4,10 +4,7 @@
  * modificá-lo sob os termos da Licença Pública Geral GNU...
  */
 
-#include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <glib.h>
 #include <math.h>
 #include <omp.h>
 
@@ -61,7 +58,7 @@ int main( void ) {
 
    if ( feedback_visual ) {
       melhor = v_gas_pipeline( img, &par, lim, feedback_visual,
-                                     v_gas_fitness_coevolutivo, gas_comparar_objetivo_max );
+                               v_gas_fitness_coevolutivo, gas_comparar_objetivo_max );
    } else {
       // 1. Cláusula de redução para garantir a integridade da contagem
       #pragma omp parallel for schedule(static) reduction(+:sucessos)
@@ -74,10 +71,10 @@ int main( void ) {
          par_local.rand = g_rand_new();
 
          GasPopulacao *melhor_local = v_gas_pipeline( img, &par_local, lim, feedback_visual,
-                                                      v_gas_fitness_coevolutivo, gas_comparar_objetivo_max );
+                                      v_gas_fitness_coevolutivo, gas_comparar_objetivo_max );
 
-         if( melhor_local->fitness > 0.999 ) {
-             sucessos++;
+         if ( melhor_local->fitness > 0.999 ) {
+            sucessos++;
          }
 
          gas_liberar_populacao( melhor_local, lim[0].n_dim );
@@ -86,7 +83,7 @@ int main( void ) {
          g_rand_free( par_local.rand );
       }
 
-      printf( "Convergência de %.2f%%\n", (float)sucessos / 100.0 );
+      printf( "Convergência de %.2f%%\n", ( float )sucessos / 100.0 );
    }
 
    // ------------------------------------------------------------------------

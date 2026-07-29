@@ -4,12 +4,11 @@
  * modificá-lo sob os termos da Licença Pública Geral GNU...
  */
 
-#include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 #include <omp.h>
 
+#include "funcoes.h"
 #include "gas.h"
 
 
@@ -172,13 +171,13 @@ int main( void ) {
          // 2. Lógica de checagem corrigida usando a tolerância real da struct
          gboolean convergiu = FALSE;
          if ( gas_comparar == gas_comparar_objetivo_max ) {
-             convergiu = ( melhor_local->fitness >= ( fitness_analitico - par_local.toleracia ) );
+            convergiu = ( melhor_local->fitness >= ( fitness_analitico - par_local.toleracia ) );
          } else { // Minimização
-             convergiu = ( melhor_local->fitness <= ( fitness_analitico + par_local.toleracia ) );
+            convergiu = ( melhor_local->fitness <= ( fitness_analitico + par_local.toleracia ) );
          }
 
          if ( convergiu ) {
-             sucessos++;
+            sucessos++;
          }
 
          // 3. Limpeza local da memória alocada dentro da thread
@@ -186,7 +185,7 @@ int main( void ) {
          g_rand_free( par_local.rand );
       }
 
-      printf( "Convergência de %.2f%%\n", (float)sucessos / 100.0 );
+      printf( "Convergência de %.2f%%\n", ( float )sucessos / 100.0 );
    }
 
    // =========================================================

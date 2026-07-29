@@ -3,7 +3,6 @@
 
 #include <glib.h>
 
-
 typedef struct {
    int n_pop, n_gen, n_tor, n_obj;
    double p_rec, p_mut, peso_disp, toleracia;
@@ -50,12 +49,6 @@ void gas_coeficiente_dispersao( const GasPopulacao *pop, double *coef_disp, cons
 
 int gas_comparar_objetivo_max( const void* a, const void* b );
 int gas_comparar_objetivo_min( const void* a, const void* b );
-
-double F5(  const double *x, const int n_dim );
-double F6(  const double *x, const int n_dim );
-double F10( const double *x, const int n_dim );
-double F11( const double *x, const int n_dim );
-double F13( const double *x, const int n_dim );
 
 void gas_display_gnuplot( const GasLimites *lim, const int geracao );
 void gas_gravar_pontos( const GasPopulacao *pop, const int n_pop, const int geracao );

@@ -4,57 +4,68 @@
  * modificá-lo sob os termos da Licença Pública Geral GNU...
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <cblas.h>
+#include <lapacke.h>
+
 #include "matriz.h"
 
 
 Matrix mat_new( int r, int c ) {
-    Matrix m;
-    m.rows = r;
-    m.cols = c;
-    m.data = ( double * )malloc( r * c * sizeof( double ) );
-    if ( m.data == NULL ) {
-        fprintf( stderr, "Erro: Falha na alocação de memória!\n" );
-        exit( 1 );
-    }
-    return m;
+   Matrix m;
+   m.rows = r;
+   m.cols = c;
+   m.data = ( double * )malloc( r * c * sizeof( double ) );
+   if ( m.data == NULL ) {
+      fprintf( stderr, "Erro: Falha na alocação de memória!\n" );
+      exit( 1 );
+   }
+   return m;
+}
+
+void mat_free( Matrix m ) {
+   if ( m.data != NULL ) {
+      free( m.data );
+   }
 }
 
 
 void mat_fill( Matrix m, double value ) {
-    for ( int i = 0; i < m.rows * m.cols; i++ ) {
-        m.data[i] = value;
-    }
+   for ( int i = 0; i < m.rows * m.cols; i++ ) {
+      m.data[i] = value;
+   }
 }
 
 
 Matrix mat_ones( int r, int c ) {
-    Matrix m = mat_new( r, c );
-    mat_fill( m, 1.0 );
-    return m;
+   Matrix m = mat_new( r, c );
+   mat_fill( m, 1.0 );
+   return m;
 }
 
 Matrix mat_zeros( int r, int c ) {
-    // 1. Centraliza a alocação (reuso de código)
-    Matrix m = mat_new( r, c );
+   // 1. Centraliza a alocação (reuso de código)
+   Matrix m = mat_new( r, c );
 
-    // 2. Garante que todos os elementos sejam 0.0
-    mat_fill( m, 0.0 );
+   // 2. Garante que todos os elementos sejam 0.0
+   mat_fill( m, 0.0 );
 
-    return m;
+   return m;
 }
 
 
 // Sua função agora fica muito mais "limpa"
 void mat_mul( Matrix A, Matrix B, Matrix C ) {
-    if ( A.cols != B.rows || A.rows != C.rows || B.cols != C.cols ) {
-        fprintf( stderr, "Erro: Dimensões incompatíveis para multiplicação!\n" );
-        return;
-    }
-    cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                 A.rows, B.cols, A.cols,
-                 1.0, A.data, A.cols,
-                 B.data, B.cols,
-                 0.0, C.data, B.cols );
+   if ( A.cols != B.rows || A.rows != C.rows || B.cols != C.cols ) {
+      fprintf( stderr, "Erro: Dimensões incompatíveis para multiplicação!\n" );
+      return;
+   }
+   cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                A.rows, B.cols, A.cols,
+                1.0, A.data, A.cols,
+                B.data, B.cols,
+                0.0, C.data, B.cols );
 }
 
 
@@ -64,12 +75,12 @@ void mat_mul( Matrix A, Matrix B, Matrix C ) {
  * A operação é feita "in-place" (na própria matriz).
  */
 void mat_mul_esc_inplace( Matrix A, double escalar ) {
-    // Parâmetros da dscal:
-    // 1. N: Número total de elementos (linhas * colunas)
-    // 2. alpha: O escalar
-    // 3. X: O ponteiro para os dados
-    // 4. incX: O "salto" entre elementos (1 significa processar todos seguidamente)
-    cblas_dscal( A.rows * A.cols, escalar, A.data, 1 );
+   // Parâmetros da dscal:
+   // 1. N: Número total de elementos (linhas * colunas)
+   // 2. alpha: O escalar
+   // 3. X: O ponteiro para os dados
+   // 4. incX: O "salto" entre elementos (1 significa processar todos seguidamente)
+   cblas_dscal( A.rows * A.cols, escalar, A.data, 1 );
 }
 
 
@@ -80,11 +91,11 @@ void mat_mul_esc_inplace( Matrix A, double escalar ) {
  * C deve estar previamente alocada com as mesmas dimensões de A.
  */
 void mat_mul_esc( Matrix A, double escalar, Matrix C ) {
-    // 1. Copia os dados de A para o destino C
-    cblas_dcopy( A.rows * A.cols, A.data, 1, C.data, 1 );
+   // 1. Copia os dados de A para o destino C
+   cblas_dcopy( A.rows * A.cols, A.data, 1, C.data, 1 );
 
-    // 2. Aplica o escalonamento diretamente no destino C
-    cblas_dscal( C.rows * C.cols, escalar, C.data, 1 );
+   // 2. Aplica o escalonamento diretamente no destino C
+   cblas_dscal( C.rows * C.cols, escalar, C.data, 1 );
 }
 
 
@@ -95,10 +106,10 @@ void mat_mul_esc( Matrix A, double escalar, Matrix C ) {
  * As matrizes devem ter as mesmas dimensões.
  */
 void mat_add_inplace( Matrix A, Matrix B ) {
-    // cblas_daxpy(N, alpha, X, incX, Y, incY)
-    // N: total de elementos
-    // alpha: 1.0 (pois queremos 1*A + B)
-    cblas_daxpy( A.rows * A.cols, 1.0, A.data, 1, B.data, 1 );
+   // cblas_daxpy(N, alpha, X, incX, Y, incY)
+   // N: total de elementos
+   // alpha: 1.0 (pois queremos 1*A + B)
+   cblas_daxpy( A.rows * A.cols, 1.0, A.data, 1, B.data, 1 );
 }
 
 
@@ -109,11 +120,11 @@ void mat_add_inplace( Matrix A, Matrix B ) {
  * C deve estar previamente alocada com as mesmas dimensões.
  */
 void mat_add( Matrix A, Matrix B, Matrix C ) {
-    // 1. Copia os dados de B para C usando cblas_dcopy (muito rápido)
-    cblas_dcopy( B.rows * B.cols, B.data, 1, C.data, 1 );
+   // 1. Copia os dados de B para C usando cblas_dcopy (muito rápido)
+   cblas_dcopy( B.rows * B.cols, B.data, 1, C.data, 1 );
 
-    // 2. Soma A em C (C = 1*A + C)
-    cblas_daxpy( A.rows * A.cols, 1.0, A.data, 1, C.data, 1 );
+   // 2. Soma A em C (C = 1*A + C)
+   cblas_daxpy( A.rows * A.cols, 1.0, A.data, 1, C.data, 1 );
 }
 
 
@@ -123,16 +134,16 @@ void mat_add( Matrix A, Matrix B, Matrix C ) {
  * As matrizes devem ter as mesmas dimensões.
  */
 void mat_sub_inplace( Matrix A, Matrix B ) {
-    // cblas_daxpy(N, alpha, X, incX, Y, incY)
-    // N: total de elementos
-    // alpha: 1.0 (pois queremos 1*A + B)
-    cblas_daxpy( A.rows * A.cols, -1.0, A.data, 1, B.data, 1 );
+   // cblas_daxpy(N, alpha, X, incX, Y, incY)
+   // N: total de elementos
+   // alpha: 1.0 (pois queremos 1*A + B)
+   cblas_daxpy( A.rows * A.cols, -1.0, A.data, 1, B.data, 1 );
 }
 
 
 void mat_sub( Matrix A, Matrix B, Matrix C ) {
-    cblas_dcopy( A.rows * A.cols, A.data, 1, C.data, 1 ); // Copia A para C
-    cblas_daxpy( B.rows * B.cols, -1.0, B.data, 1, C.data, 1 ); // C = A - B
+   cblas_dcopy( A.rows * A.cols, A.data, 1, C.data, 1 ); // Copia A para C
+   cblas_daxpy( B.rows * B.cols, -1.0, B.data, 1, C.data, 1 ); // C = A - B
 }
 
 
@@ -141,20 +152,20 @@ void mat_sub( Matrix A, Matrix B, Matrix C ) {
  * C deve estar previamente alocada com dimensões (A.rows x A.rows).
  */
 void mat_mul_by_transpose( Matrix A, Matrix C ) {
-    if ( C.rows != A.rows || C.cols != A.rows ) {
-        fprintf( stderr, "Erro: C deve ser uma matriz quadrada de tamanho %d x %d!\n", A.rows, A.rows );
-        return;
-    }
+   if ( C.rows != A.rows || C.cols != A.rows ) {
+      fprintf( stderr, "Erro: C deve ser uma matriz quadrada de tamanho %d x %d!\n", A.rows, A.rows );
+      return;
+   }
 
-    // Parâmetros dgemm para C = alpha * op(A) * op(B) + beta * C
-    // op(A) = A (CblasNoTrans)
-    // op(B) = A^T (CblasTrans)
-    // M = A.rows, N = A.rows, K = A.cols
-    cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasTrans,
-                 A.rows, A.rows, A.cols,
-                 1.0, A.data, A.cols,
-                 A.data, A.cols, // B é a própria matriz A
-                 0.0, C.data, C.cols );
+   // Parâmetros dgemm para C = alpha * op(A) * op(B) + beta * C
+   // op(A) = A (CblasNoTrans)
+   // op(B) = A^T (CblasTrans)
+   // M = A.rows, N = A.rows, K = A.cols
+   cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasTrans,
+                A.rows, A.rows, A.cols,
+                1.0, A.data, A.cols,
+                A.data, A.cols, // B é a própria matriz A
+                0.0, C.data, C.cols );
 }
 
 /**
@@ -162,19 +173,19 @@ void mat_mul_by_transpose( Matrix A, Matrix C ) {
  * C deve estar previamente alocada com dimensões (A.cols x A.cols).
  */
 void mat_transpose_by_mul( Matrix A, Matrix C ) {
-    if ( C.rows != A.cols || C.cols != A.cols ) {
-        fprintf( stderr, "Erro: C deve ser uma matriz quadrada de tamanho %d x %d!\n", A.cols, A.cols );
-        return;
-    }
+   if ( C.rows != A.cols || C.cols != A.cols ) {
+      fprintf( stderr, "Erro: C deve ser uma matriz quadrada de tamanho %d x %d!\n", A.cols, A.cols );
+      return;
+   }
 
-    // op(A) = A^T (CblasTrans)
-    // op(B) = A (CblasNoTrans)
-    // M = A.cols, N = A.cols, K = A.rows
-    cblas_dgemm( CblasRowMajor, CblasTrans, CblasNoTrans,
-                 A.cols, A.cols, A.rows,
-                 1.0, A.data, A.cols,
-                 A.data, A.cols, // B é a própria matriz A
-                 0.0, C.data, C.cols );
+   // op(A) = A^T (CblasTrans)
+   // op(B) = A (CblasNoTrans)
+   // M = A.cols, N = A.cols, K = A.rows
+   cblas_dgemm( CblasRowMajor, CblasTrans, CblasNoTrans,
+                A.cols, A.cols, A.rows,
+                1.0, A.data, A.cols,
+                A.data, A.cols, // B é a própria matriz A
+                0.0, C.data, C.cols );
 }
 
 /**
@@ -186,29 +197,29 @@ void mat_transpose_by_mul( Matrix A, Matrix C ) {
  * @return int 0 se teve sucesso (mesmo retorno do LAPACK_INFO).
  */
 int mat_eigen_symm( Matrix A, Matrix autovalores, Matrix autovetores ) {
-    if ( A.rows != A.cols ) {
-        fprintf( stderr, "Erro: A matriz deve ser quadrada para cálculo de autovalores!\n" );
-        return -1;
-    }
+   if ( A.rows != A.cols ) {
+      fprintf( stderr, "Erro: A matriz deve ser quadrada para cálculo de autovalores!\n" );
+      return -1;
+   }
 
-    int n = A.rows;
+   int n = A.rows;
 
-    // 1. O LAPACKE altera a matriz de entrada durante o cálculo.
-    // Copiamos os dados de A para a matriz de autovetores para preservar A intacta.
-    cblas_dcopy( n * n, A.data, 1, autovetores.data, 1 );
+   // 1. O LAPACKE altera a matriz de entrada durante o cálculo.
+   // Copiamos os dados de A para a matriz de autovetores para preservar A intacta.
+   cblas_dcopy( n * n, A.data, 1, autovetores.data, 1 );
 
-    // 2. Chamada purista do LAPACKE (Divide & Conquer para matrizes simétricas)
-    // LAPACK_ROW_MAJOR: Formato dos dados na memória (Row-Major do C)
-    // 'V': Computar autovalores E autovetores ('N' seria apenas autovalores)
-    // 'U': Apenas a parte triangular superior da matriz é acessada
-    int info = LAPACKE_dsyevd( LAPACK_ROW_MAJOR, 'V', 'U',
-                               n, autovetores.data, n, autovalores.data );
+   // 2. Chamada purista do LAPACKE (Divide & Conquer para matrizes simétricas)
+   // LAPACK_ROW_MAJOR: Formato dos dados na memória (Row-Major do C)
+   // 'V': Computar autovalores E autovetores ('N' seria apenas autovalores)
+   // 'U': Apenas a parte triangular superior da matriz é acessada
+   int info = LAPACKE_dsyevd( LAPACK_ROW_MAJOR, 'V', 'U',
+                              n, autovetores.data, n, autovalores.data );
 
-    if ( info > 0 ) {
-        fprintf( stderr, "Erro: O algoritmo LAPACKE_dsyevd falhou em convergir!\n" );
-    }
+   if ( info > 0 ) {
+      fprintf( stderr, "Erro: O algoritmo LAPACKE_dsyevd falhou em convergir!\n" );
+   }
 
-    return info;
+   return info;
 }
 
 /**
@@ -219,32 +230,32 @@ int mat_eigen_symm( Matrix A, Matrix autovalores, Matrix autovetores ) {
  * @param media Matrix (1 x n_dimensões) alocada que receberá os valores médios
  */
 void mat_centralizar_na_origem( Matrix X, Matrix media ) {
-    if ( media.rows != 1 || media.cols != X.cols ) {
-        fprintf( stderr, "Erro: A matriz média deve ter dimensão 1 x %d!\n", X.cols );
-        return;
-    }
+   if ( media.rows != 1 || media.cols != X.cols ) {
+      fprintf( stderr, "Erro: A matriz média deve ter dimensão 1 x %d!\n", X.cols );
+      return;
+   }
 
-    int n_ind = X.rows;
-    int n_dim = X.cols;
+   int n_ind = X.rows;
+   int n_dim = X.cols;
 
-    // 1. Zera a matriz de médias e calcula a soma de cada dimensão (coluna)
-    mat_fill( media, 0.0 );
-    for ( int i = 0; i < n_ind; i++ ) {
-        for ( int j = 0; j < n_dim; j++ ) {
-            // Acesso contíguo ao buffer data
-            media.data[j] += X.data[i * n_dim + j];
-        }
-    }
+   // 1. Zera a matriz de médias e calcula a soma de cada dimensão (coluna)
+   mat_fill( media, 0.0 );
+   for ( int i = 0; i < n_ind; i++ ) {
+      for ( int j = 0; j < n_dim; j++ ) {
+         // Acesso contíguo ao buffer data
+         media.data[j] += X.data[i * n_dim + j];
+      }
+   }
 
-    // 2. Divide pelo número de indivíduos para obter a média de cada dimensão (\mu_j)
-    mat_mul_esc_inplace( media, 1.0 / (double)n_ind );
+   // 2. Divide pelo número de indivíduos para obter a média de cada dimensão (\mu_j)
+   mat_mul_esc_inplace( media, 1.0 / ( double )n_ind );
 
-    // 3. Subtrai o vetor média de CADA LINHA da população usando a BLAS
-    // cblas_daxpy executa: Y = alpha * X + Y (aqui: Linha = -1.0 * Media + Linha)
-    for ( int i = 0; i < n_ind; i++ ) {
-        double *linha_i = &X.data[i * n_dim];
-        cblas_daxpy( n_dim, -1.0, media.data, 1, linha_i, 1 );
-    }
+   // 3. Subtrai o vetor média de CADA LINHA da população usando a BLAS
+   // cblas_daxpy executa: Y = alpha * X + Y (aqui: Linha = -1.0 * Media + Linha)
+   for ( int i = 0; i < n_ind; i++ ) {
+      double *linha_i = &X.data[i * n_dim];
+      cblas_daxpy( n_dim, -1.0, media.data, 1, linha_i, 1 );
+   }
 }
 
 /**
@@ -255,121 +266,42 @@ void mat_centralizar_na_origem( Matrix X, Matrix media ) {
  * @param X_2d Matriz de saída (n_ind x 2) previamente alocada.
  */
 void mat_projetar_pca_2d( Matrix X, Matrix autovetores, Matrix X_2d ) {
-    if ( X_2d.rows != X.rows || X_2d.cols != 2 ) {
-        fprintf( stderr, "Erro: A matriz de saída X_2d deve ter tamanho %d x 2!\n", X.rows );
-        return;
-    }
+   if ( X_2d.rows != X.rows || X_2d.cols != 2 ) {
+      fprintf( stderr, "Erro: A matriz de saída X_2d deve ter tamanho %d x 2!\n", X.rows );
+      return;
+   }
 
-    int n_ind = X.rows;
-    int n_dim = X.cols;
+   int n_ind = X.rows;
+   int n_dim = X.cols;
 
-    // 1. Identificando as colunas dos Componentes Principais
-    // V1 (Maior variância) está na última coluna: índice (n_dim - 1)
-    // V2 (Segunda maior) está na penúltima coluna: índice (n_dim - 2)
+   // 1. Identificando as colunas dos Componentes Principais
+   // V1 (Maior variância) está na última coluna: índice (n_dim - 1)
+   // V2 (Segunda maior) está na penúltima coluna: índice (n_dim - 2)
 
-    // O ponteiro aponta para o primeiro elemento de cada coluna na matriz Row-Major
-    double *v1 = &autovetores.data[n_dim - 1];
-    double *v2 = &autovetores.data[n_dim - 2];
+   // O ponteiro aponta para o primeiro elemento de cada coluna na matriz Row-Major
+   double *v1 = &autovetores.data[n_dim - 1];
+   double *v2 = &autovetores.data[n_dim - 2];
 
-    // O ponteiro aponta para a primeira (X) e segunda (Y) colunas de saída
-    double *out_x = &X_2d.data[0];
-    double *out_y = &X_2d.data[1];
+   // O ponteiro aponta para a primeira (X) e segunda (Y) colunas de saída
+   double *out_x = &X_2d.data[0];
+   double *out_y = &X_2d.data[1];
 
-    // 2. Projeta o Eixo X (Multiplica X pelo autovetor V1)
-    // incX = n_dim (salta uma linha inteira para pegar o próximo elemento da coluna em V1)
-    // incY = 2 (salta duas posições para preencher a coluna X na matriz de saída)
-    cblas_dgemv( CblasRowMajor, CblasNoTrans,
-                 n_ind, n_dim,
-                 1.0, X.data, n_dim,
-                 v1, n_dim,
-                 0.0, out_x, 2 );
+   // 2. Projeta o Eixo X (Multiplica X pelo autovetor V1)
+   // incX = n_dim (salta uma linha inteira para pegar o próximo elemento da coluna em V1)
+   // incY = 2 (salta duas posições para preencher a coluna X na matriz de saída)
+   cblas_dgemv( CblasRowMajor, CblasNoTrans,
+                n_ind, n_dim,
+                1.0, X.data, n_dim,
+                v1, n_dim,
+                0.0, out_x, 2 );
 
-    // 3. Projeta o Eixo Y (Multiplica X pelo autovetor V2)
-    cblas_dgemv( CblasRowMajor, CblasNoTrans,
-                 n_ind, n_dim,
-                 1.0, X.data, n_dim,
-                 v2, n_dim,
-                 0.0, out_y, 2 );
+   // 3. Projeta o Eixo Y (Multiplica X pelo autovetor V2)
+   cblas_dgemv( CblasRowMajor, CblasNoTrans,
+                n_ind, n_dim,
+                1.0, X.data, n_dim,
+                v2, n_dim,
+                0.0, out_y, 2 );
 }
 
 
 
-
-
-
-
-
-
-
-
-
-void mat_print( Matrix m, const char *label ) {
-    if ( label != NULL ) {
-        printf( "%s =\n", label );
-    }
-
-    for ( int i = 0; i < m.rows; i++ ) {
-        printf( "  [ " );
-        for ( int j = 0; j < m.cols; j++ ) {
-            // %8.2f reserva 8 espaços e 2 casas decimais para alinhar colunas
-            printf( "%*.2f", j == 0 ? 1 : 8, mat_at( m, i, j ) );
-        }
-        printf( " ]\n" );
-    }
-    printf( "\n" );
-}
-
-
-void mat_free( Matrix m ) {
-    if ( m.data != NULL ) {
-        free( m.data );
-    }
-}
-
-
-
-void mat_fprint_latex( FILE *stream, Matrix m ) {
-    fprintf( stream, "\\begin{pmatrix}\n" );
-    for ( int i = 0; i < m.rows; i++ ) {
-        fprintf( stream, "    " );
-        for ( int j = 0; j < m.cols; j++ ) {
-            fprintf( stream, "%.2f%s", mat_at( m, i, j ), ( j == m.cols - 1 ) ? "" : " & " );
-        }
-        fprintf( stream, "%s\n", ( i == m.rows - 1 ) ? "" : " \\\\" );
-    }
-    fprintf( stream, "\\end{pmatrix}\n" );
-}
-
-
-
-// Imprime no terminal (usando stdout)
-void mat_print_latex( Matrix m, const char *label ) {
-    if ( label != NULL ) printf( "%% %s\n", label );
-    mat_fprint_latex( stdout, m );
-    printf( "\n" );
-}
-
-
-// Salva em um arquivo
-void mat_export_latex( Matrix m, const char *filename ) {
-    FILE *f = fopen( filename, "w" );
-    if ( f != NULL ) {
-        mat_fprint_latex( f, m );
-        fclose( f );
-    }
-}
-
-
-
-void mat_step_time( Matrix E, Matrix H, int i, int j ) {
-    // Macros locais: valem apenas dentro desta função
-    #define Ei(i, j) mat_at(E, i, j)
-    #define Hj(i, j) mat_at(H, i, j)
-
-    // A equação fica idêntica ao que você escreveria no papel
-    Ei( i, j ) = Ei( i, j ) + 0.5 * ( Hj( i, j ) - Hj( i - 1, j ) );
-
-    // Opcional: limpar as macros no fim para não poluir o resto do código
-    #undef Ei
-    #undef Hj
-}

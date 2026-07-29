@@ -9,7 +9,6 @@
 #include <string.h> // Necessário para memcpy
 #include <glib.h>
 
-#include "gas.h"
 #include "v_gas.h"
 
 
@@ -28,11 +27,26 @@ static double v_fitness_local( const double *x, const ImagemCinza *img, const in
    // Define a direção da varredura apontando para o centro da imagem
    int sinal_x, sinal_y;
    switch ( k ) {
-      case 0: sinal_x =  1; sinal_y =  1; break; // Q0: Direita e Baixo
-      case 1: sinal_x = -1; sinal_y =  1; break; // Q1: Esquerda e Baixo
-      case 2: sinal_x = -1; sinal_y = -1; break; // Q2: Esquerda e Cima
-      case 3: sinal_x =  1; sinal_y = -1; break; // Q3: Direita e Cima
-      default: sinal_x = 1; sinal_y =  1; break;
+   case 0:
+      sinal_x =  1;
+      sinal_y =  1;
+      break; // Q0: Direita e Baixo
+   case 1:
+      sinal_x = -1;
+      sinal_y =  1;
+      break; // Q1: Esquerda e Baixo
+   case 2:
+      sinal_x = -1;
+      sinal_y = -1;
+      break; // Q2: Esquerda e Cima
+   case 3:
+      sinal_x =  1;
+      sinal_y = -1;
+      break; // Q3: Direita e Cima
+   default:
+      sinal_x = 1;
+      sinal_y =  1;
+      break;
    }
 
    int lado = 10;
@@ -216,8 +230,7 @@ GasPopulacao *v_gas_pipeline( const ImagemCinza *img,
                               gboolean feedback_visual,
                               double ( *v_gas_avaliar )( const double*, const GasPopulacao*, const ImagemCinza *img,
                                     const double coef_disp, const int ),
-                              int ( *gas_comparar )( const void* a, const void* b ) )
-{
+                              int ( *gas_comparar )( const void* a, const void* b ) ) {
    g_return_val_if_fail( par && lim && v_gas_avaliar && gas_comparar, NULL );
 
    // Alocação da matriz de dispersão
