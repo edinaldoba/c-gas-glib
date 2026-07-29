@@ -509,10 +509,11 @@ void gas_display_terminal( const GasPopulacao *pop, const int n_dim, const doubl
 
 
 
-GasPopulacao gas_pipeline( const GasParametros *par, const GasLimites *lim, double( gas_avaliar )( const double*, const int ),
-                           int( gas_comparar )( const void* a, const void* b ) ) {
-   GasPopulacao melhor = {0};
-   g_return_val_if_fail( par && lim && gas_avaliar && gas_comparar, melhor );
+GasPopulacao *gas_pipeline( const GasParametros *par, const GasLimites *lim, gboolean feedback_visual,
+                           double( gas_avaliar )( const double*, const int ),
+                           int( gas_comparar )( const void* a, const void* b ) )
+{
+   g_return_val_if_fail( par && lim && gas_avaliar && gas_comparar, NULL );
 
    double *coef_disp = g_new0( double, lim->n_dim );
    GasPopulacao *pop = gas_alocar_populacao( par->n_pop, lim->n_dim );
@@ -530,18 +531,22 @@ GasPopulacao gas_pipeline( const GasParametros *par, const GasLimites *lim, doub
    gas_coeficiente_dispersao( pop, coef_disp, par, lim->n_dim );
 
    //--------------- FEEDBACK VISUAL ------------------------//
-   FILE *p_dispersao = fopen( "gnuplot/D.pts", "w" );
-   FILE *p_fitness   = fopen( "gnuplot/E.pts", "w" );
-   dispersao_media = gas_mean( coef_disp, lim->n_dim );
-   fprintf( p_dispersao, "%d %.8f\n", geracao, dispersao_media );
-   fprintf( p_fitness, "%d %.8f\n", geracao, pop[par->n_pop - 1].fitness );
    GasPopulacao *pop_2d = NULL;
-   if ( lim->n_dim > 2 ) {
-      pop_2d = gas_alocar_populacao( par->n_pop, 2 );
-      gas_projetar_pca( pop, pop_2d, par->n_pop, lim->n_dim );
-      gas_gravar_pontos( pop_2d, par->n_pop, geracao );
-   } else {
-      gas_gravar_pontos( pop, par->n_pop, geracao );
+   FILE *p_dispersao = NULL;
+   FILE *p_fitness = NULL;
+   if ( feedback_visual ) {
+      p_dispersao = fopen( "gnuplot/D.pts", "w" );
+      p_fitness   = fopen( "gnuplot/E.pts", "w" );
+      dispersao_media = gas_mean( coef_disp, lim->n_dim );
+      fprintf( p_dispersao, "%d %.8f\n", geracao, dispersao_media );
+      fprintf( p_fitness, "%d %.8f\n", geracao, pop[par->n_pop - 1].fitness );
+      if ( lim->n_dim > 2 ) {
+         pop_2d = gas_alocar_populacao( par->n_pop, 2 );
+         gas_projetar_pca( pop, pop_2d, par->n_pop, lim->n_dim );
+         gas_gravar_pontos( pop_2d, par->n_pop, geracao );
+      } else {
+         gas_gravar_pontos( pop, par->n_pop, geracao );
+      }
    }
    //-------------------------------------------------------//
 
@@ -552,6 +557,7 @@ GasPopulacao gas_pipeline( const GasParametros *par, const GasLimites *lim, doub
       gas_torneio( pop, gen, lim->n_dim, par, gas_comparar );
       gas_crossover_aritmetico( pop, gen, lim->n_dim, par );
       gas_mutacao_creep( pop, coef_disp, lim, par );
+      // gas_mutacao_direcional( pop, coef_disp, lim->n_dim, par );
 
       for ( int i = 0; i < par->n_pop; i++ ) {
          pop[i].fitness = gas_avaliar( pop[i].x, lim->n_dim );
@@ -561,29 +567,33 @@ GasPopulacao gas_pipeline( const GasParametros *par, const GasLimites *lim, doub
       dispersao_media = gas_mean( coef_disp, lim->n_dim );
 
       //--------------- FEEDBACK VISUAL ------------------------//
-      fprintf( p_dispersao, "%d %.8f\n", geracao, dispersao_media );
-      fprintf( p_fitness, "%d %.8f\n", geracao, pop[par->n_pop - 1].fitness );
-      if ( lim->n_dim > 2 ) {
-         gas_projetar_pca( pop, pop_2d, par->n_pop, lim->n_dim );
-         gas_gravar_pontos( pop_2d, par->n_pop, geracao );
-      } else {
-         gas_gravar_pontos( pop, par->n_pop, geracao );
+      if ( feedback_visual ) {
+         fprintf( p_dispersao, "%d %.8f\n", geracao, dispersao_media );
+         fprintf( p_fitness, "%d %.8f\n", geracao, pop[par->n_pop - 1].fitness );
+         if ( lim->n_dim > 2 ) {
+            gas_projetar_pca( pop, pop_2d, par->n_pop, lim->n_dim );
+            gas_gravar_pontos( pop_2d, par->n_pop, geracao );
+         } else {
+            gas_gravar_pontos( pop, par->n_pop, geracao );
+         }
       }
       //--------------------------------------------------------//
 
    } while ( dispersao_media > par->toleracia && geracao < 1000 ); // <--- FIM DO LOOP WHILE
 
    //--------------- FEEDBACK VISUAL ------------------------//
-   gas_display_terminal( &pop[par->n_pop - 1], lim->n_dim, dispersao_media, geracao );
-   gas_display_gnuplot( lim, geracao );
-   if ( p_fitness )   fclose( p_fitness );
-   if ( p_dispersao ) fclose( p_dispersao );
-   if ( pop_2d ) gas_liberar_populacao( pop_2d, par->n_pop );
+   if ( feedback_visual ) {
+      gas_display_terminal( &pop[par->n_pop - 1], lim->n_dim, dispersao_media, geracao );
+      gas_display_gnuplot( lim, geracao );
+      if ( p_fitness )   fclose( p_fitness );
+      if ( p_dispersao ) fclose( p_dispersao );
+      if ( pop_2d ) gas_liberar_populacao( pop_2d, par->n_pop );
+   }
    //--------------------------------------------------------//
 
-   melhor.fitness = pop[par->n_pop - 1].fitness;
-   melhor.x = g_new0( double, lim->n_dim );
-   memcpy( melhor.x, pop[par->n_pop - 1].x, lim->n_dim * sizeof( double ) );
+   GasPopulacao *melhor = gas_alocar_populacao( 1, lim->n_dim );
+   melhor->fitness = pop[par->n_pop - 1].fitness;
+   memcpy( melhor->x, pop[par->n_pop - 1].x, lim->n_dim * sizeof( double ) );
 
    //-------- Liberar memória ----------------
    g_free( coef_disp );

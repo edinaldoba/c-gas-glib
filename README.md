@@ -52,4 +52,5 @@ Para compilar e executar o projeto, você precisará das seguintes ferramentas i
 
 **Exemplo de compilação via terminal:**
 ```bash
-gcc -o gas_app main.c gas_pipeline.c funcoes_teste.c -O3 -fopenmp `pkg-config --cflags --libs glib-2.0` -lm
+make run
+make vrun

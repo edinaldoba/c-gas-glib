@@ -213,9 +213,11 @@ double v_gas_fitness_coevolutivo( const double *x, const GasPopulacao *elite, co
 GasPopulacao *v_gas_pipeline( const ImagemCinza *img,
                               const GasParametros *par,
                               const GasLimites *lim,
+                              gboolean feedback_visual,
                               double ( *v_gas_avaliar )( const double*, const GasPopulacao*, const ImagemCinza *img,
                                     const double coef_disp, const int ),
-                              int ( *gas_comparar )( const void* a, const void* b ) ) {
+                              int ( *gas_comparar )( const void* a, const void* b ) )
+{
    g_return_val_if_fail( par && lim && v_gas_avaliar && gas_comparar, NULL );
 
    // Alocação da matriz de dispersão
@@ -252,15 +254,20 @@ GasPopulacao *v_gas_pipeline( const ImagemCinza *img,
    }
 
    //--------------- FEEDBACK VISUAL ------------------------//
-   FILE *p_dispersao = fopen( "gnuplot/D.pts", "w" );
-   FILE *p_fitness   = fopen( "gnuplot/E.pts", "w" );
-   g_autofree double *fitness_elite   = g_new0( double, par->n_obj );
-   for ( int k = 0; k < par->n_obj; k++ ) {
-      fitness_elite[k] = elite[k].fitness;
-      gas_gravar_pontos( pop[k], par->n_pop, geracao );
+   FILE *p_dispersao = NULL;
+   FILE *p_fitness = NULL;
+   g_autofree double *fitness_elite = NULL;
+   if ( feedback_visual ) {
+      p_dispersao = fopen( "gnuplot/D.pts", "w" );
+      p_fitness   = fopen( "gnuplot/E.pts", "w" );
+      fitness_elite = g_new0( double, par->n_obj );
+      for ( int k = 0; k < par->n_obj; k++ ) {
+         fitness_elite[k] = elite[k].fitness;
+         gas_gravar_pontos( pop[k], par->n_pop, geracao );
+      }
+      fprintf( p_fitness,   "%d %.8f\n", geracao, gas_mean( fitness_elite,   par->n_obj ) );
+      fprintf( p_dispersao, "%d %.8f\n", geracao, gas_mean( dispersao_media, par->n_obj ) );
    }
-   fprintf( p_fitness,   "%d %.8f\n", geracao, gas_mean( fitness_elite,   par->n_obj ) );
-   fprintf( p_dispersao, "%d %.8f\n", geracao, gas_mean( dispersao_media, par->n_obj ) );
    //-------------------------------------------------------//
 
    // Laço Evolutivo
@@ -285,35 +292,39 @@ GasPopulacao *v_gas_pipeline( const ImagemCinza *img,
       }
 
       //--------------- FEEDBACK VISUAL ------------------------//
-      for ( int k = 0; k < par->n_obj; k++ ) {
-         fitness_elite[k] = elite[k].fitness;
-         gas_gravar_pontos( pop[k], par->n_pop, geracao );
+      if ( feedback_visual ) {
+         for ( int k = 0; k < par->n_obj; k++ ) {
+            fitness_elite[k] = elite[k].fitness;
+            gas_gravar_pontos( pop[k], par->n_pop, geracao );
+         }
+         fprintf( p_fitness,   "%d %.8f\n", geracao, gas_mean( fitness_elite,   par->n_obj ) );
+         fprintf( p_dispersao, "%d %.8f\n", geracao, gas_mean( dispersao_media, par->n_obj ) );
       }
-      fprintf( p_fitness,   "%d %.8f\n", geracao, gas_mean( fitness_elite,   par->n_obj ) );
-      fprintf( p_dispersao, "%d %.8f\n", geracao, gas_mean( dispersao_media, par->n_obj ) );
       //--------------------------------------------------------//
 
    } while ( gas_mean( dispersao_media, par->n_obj ) > par->toleracia && geracao < 1000 );
 
    //--------------- FEEDBACK VISUAL ------------------------//
-   for ( int k = 0; k < par->n_obj; k++ ) {
-      gas_display_terminal( &pop[k][par->n_pop - 1], lim[k].n_dim, dispersao_media[k], geracao );
+   if ( feedback_visual ) {
+      for ( int k = 0; k < par->n_obj; k++ ) {
+         gas_display_terminal( &pop[k][par->n_pop - 1], lim[k].n_dim, dispersao_media[k], geracao );
+      }
+      GasLimites v_lim = {
+         .n_dim = lim[0].n_dim,
+         .ini = g_new0( double, lim[0].n_dim ),
+         .fim = g_new0( double, lim[0].n_dim )
+      };
+      memcpy( v_lim.ini, lim[0].ini, v_lim.n_dim * sizeof( double ) );
+      memcpy( v_lim.fim, lim[2].fim, v_lim.n_dim * sizeof( double ) );
+
+      gas_display_gnuplot( &v_lim, geracao );
+
+      g_free( v_lim.ini );
+      g_free( v_lim.fim );
+
+      if ( p_fitness )   fclose( p_fitness );
+      if ( p_dispersao ) fclose( p_dispersao );
    }
-   GasLimites v_lim = {
-      .n_dim = lim[0].n_dim,
-      .ini = g_new0( double, lim[0].n_dim ),
-      .fim = g_new0( double, lim[0].n_dim )
-   };
-   memcpy( v_lim.ini, lim[0].ini, v_lim.n_dim * sizeof( double ) );
-   memcpy( v_lim.fim, lim[2].fim, v_lim.n_dim * sizeof( double ) );
-
-   gas_display_gnuplot( &v_lim, geracao );
-
-   g_free( v_lim.ini );
-   g_free( v_lim.fim );
-
-   if ( p_fitness )   fclose( p_fitness );
-   if ( p_dispersao ) fclose( p_dispersao );
    //--------------------------------------------------------//
 
    // ------------------------------------------------------------------------

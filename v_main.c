@@ -32,6 +32,10 @@ int main( void ) {
    gas_gerar_sementes( sementes );
    g_autoptr( GRand ) rand_context = g_rand_new_with_seed_array( sementes, G_N_ELEMENTS( sementes ) );
 
+   // Quando o feedback_visual é TRUE, temos uma execução normal de gas_pipeline() com feedback visual no gnuplot
+   // Quando o feedback_visual é FALSE, executamos um teste em paralelo com 10 mil execuções de gas_pipeline()
+   gboolean feedback_visual = TRUE;
+
    GasParametros par = {
       .n_pop     = 200,
       .n_gen     = 164,
@@ -51,27 +55,52 @@ int main( void ) {
 
    GasLimites *lim = v_gas_limites( img->nrow, img->ncol, par.n_obj );
 
-   // int sucessos = 0;
 
-   // #pragma omp parallel for schedule(static)
-   // for ( int i = 0; i < 10000; i++ ) {
-      GasPopulacao *melhor = v_gas_pipeline( img, &par, lim, v_gas_fitness_coevolutivo, gas_comparar_objetivo_max );
-      // if( melhor->fitness > 0.999 ) sucessos++;
-      gas_liberar_populacao( melhor, lim[0].n_dim );
-   // }
-   // printf( "Convergência de %.2f%%\n", (float)sucessos / 100.0 );
+   int sucessos = 0;
+   GasPopulacao *melhor = NULL;
 
-   liberar_matriz_pixels( img->image, img->nrow );
-   g_free( img );
+   if ( feedback_visual ) {
+      melhor = v_gas_pipeline( img, &par, lim, feedback_visual,
+                                     v_gas_fitness_coevolutivo, gas_comparar_objetivo_max );
+   } else {
+      // 1. Cláusula de redução para garantir a integridade da contagem
+      #pragma omp parallel for schedule(static) reduction(+:sucessos)
+      for ( int i = 0; i < 10000; i++ ) {
+
+         // 2. Isolamento de Threads: Cópia local dos parâmetros
+         GasParametros par_local = par;
+
+         // Cada thread ganha seu próprio motor estocástico
+         par_local.rand = g_rand_new();
+
+         GasPopulacao *melhor_local = v_gas_pipeline( img, &par_local, lim, feedback_visual,
+                                                      v_gas_fitness_coevolutivo, gas_comparar_objetivo_max );
+
+         if( melhor_local->fitness > 0.999 ) {
+             sucessos++;
+         }
+
+         gas_liberar_populacao( melhor_local, lim[0].n_dim );
+
+         // 3. Libera o motor estocástico criado para esta thread
+         g_rand_free( par_local.rand );
+      }
+
+      printf( "Convergência de %.2f%%\n", (float)sucessos / 100.0 );
+   }
 
    // ------------------------------------------------------------------------
    // LIMPEZA DE MEMÓRIA (DEEP FREE)
    // ------------------------------------------------------------------------
+   liberar_matriz_pixels( img->image, img->nrow );
+   g_free( img );
+
    for ( int k = 0; k < par.n_obj; k++ ) {
       g_free( lim[k].ini );
       g_free( lim[k].fim );
    }
    g_free( lim );
+   if ( melhor ) gas_liberar_populacao( melhor, lim[0].n_dim );;
 
    display_tempo( "Evolução", cronometro );
 

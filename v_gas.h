@@ -26,6 +26,7 @@ double v_gas_fitness_coevolutivo( const double *x, const GasPopulacao *elite, co
 GasPopulacao *v_gas_pipeline( const ImagemCinza *img,
                               const GasParametros *par,
                               const GasLimites *lim,
+                              gboolean feedback_visual,
                               double ( *v_gas_avaliar )( const double*, const GasPopulacao*, const ImagemCinza *img,
                                     const double coef_disp, const int ),
                               int ( *gas_comparar )( const void* a, const void* b ) );
