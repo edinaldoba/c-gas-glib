@@ -8,7 +8,7 @@ CFLAGS  = -Wall -Wextra -O3 -fopenmp $(shell pkg-config --cflags glib-2.0)
 LIBS    = $(shell pkg-config --libs glib-2.0) -llapacke -llapack -lblas -lm
 
 # Fontes comuns compartilhados por ambos os projetos
-COMMON_SRCS = gas.c funcoes.c matriz.c
+COMMON_SRCS = gas.c funcoes.c matriz.c gnuplot.c
 COMMON_OBJS = $(COMMON_SRCS:.c=.o)
 
 # Fontes específicos de cada versão

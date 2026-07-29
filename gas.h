@@ -50,10 +50,6 @@ void gas_coeficiente_dispersao( const GasPopulacao *pop, double *coef_disp, cons
 int gas_comparar_objetivo_max( const void* a, const void* b );
 int gas_comparar_objetivo_min( const void* a, const void* b );
 
-void gas_display_gnuplot( const GasLimites *lim, const int geracao );
-void gas_gravar_pontos( const GasPopulacao *pop, const int n_pop, const int geracao );
-void gas_display_terminal( const GasPopulacao *pop, const int n_dim, const double dispersao_max, const int geracao );
-
 GasPopulacao *gas_pipeline( const GasParametros *par, const GasLimites *lim, gboolean feedback_visual,
                             double( gas_avaliar )( const double*, const int ),
                             int( gas_comparar )( const void* a, const void* b ) );

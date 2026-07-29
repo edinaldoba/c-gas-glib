@@ -9,6 +9,7 @@
 #include <string.h> // Necessário para memcpy
 #include <glib.h>
 
+#include "gnuplot.h"
 #include "v_gas.h"
 
 
