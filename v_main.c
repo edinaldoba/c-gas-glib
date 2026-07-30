@@ -61,7 +61,7 @@ int main( void ) {
       melhor = v_gas_pipeline( img, &par, lim, feedback_visual );
 
    } else {
-      // 1. Cláusula de redução para garantir a integridade da contagem
+
       #pragma omp parallel for schedule(static) reduction(+:sucessos)
       for ( int i = 0; i < 10000; i++ ) {
 
