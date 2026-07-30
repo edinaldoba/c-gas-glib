@@ -49,7 +49,8 @@ int main( void ) {
 
    // Alocação e leitura segura da imagem
    ImagemCinza *img = g_new0( ImagemCinza, 1 );
-   imread_gray( img, "./img/img.ppm" );
+   // imread_gray( img, "./img/imgh.ppm" );
+   imread_gray( img, "./img/imgv.ppm" );
 
    GasLimites *lim = v_gas_limites( img->nrow, img->ncol, par.n_obj );
 
@@ -72,13 +73,33 @@ int main( void ) {
 
          GasPopulacao *melhor_local = v_gas_pipeline( img, &par_local, lim, feedback_visual );
 
+         // Se não atingir o fitness mínimo (imagem difícil/ruidosa), faz o resgate ajustando só a dispersão
+         // double media_fitness = ( melhor_local[0].fitness + melhor_local[1].fitness +
+         //                          melhor_local[3].fitness + melhor_local[2].fitness ) / 4.0;
+         // if ( media_fitness < 0.999 ) {
+         //    par_local.peso_disp = 2.7; // ou 3.0 para forçar a exploração e quebrar o mínimo local
+         //    melhor_local = v_gas_pipeline( img, &par_local, lim, feedback_visual );
+         // }
+
          // 1. Coordenadas exatas do Gabarito Real (Ground Truth) A, B, C, D
+         // static const double gabarito_real[4][2] = {
+         //    { 216.0, 147.0 }, // Âncora A (k = 0)
+         //    { 857.0, 147.0 }, // Âncora B (k = 1)
+         //    { 857.0, 650.0 }, // Âncora C (k = 2)
+         //    { 216.0, 650.0 }  // Âncora D (k = 3)
+         // };
          static const double gabarito_real[4][2] = {
-            { 216.0, 147.0 }, // Âncora A (k = 0)
-            { 857.0, 147.0 }, // Âncora B (k = 1)
-            { 857.0, 650.0 }, // Âncora C (k = 2)
-            { 216.0, 650.0 }  // Âncora D (k = 3)
+            { 203.0, 194.0 }, // Âncora A (k = 0)
+            { 655.0, 194.0 }, // Âncora B (k = 1)
+            { 655.0, 872.0 }, // Âncora C (k = 2)
+            { 203.0, 872.0 }  // Âncora D (k = 3)
          };
+         // static const double gabarito_real[4][2] = {
+         //    { 420.0,  81.0 }, // Âncora A (k = 0)
+         //    { 908.0,  81.0 }, // Âncora B (k = 1)
+         //    { 908.0, 813.0 }, // Âncora C (k = 2)
+         //    { 420.0, 813.0 }  // Âncora D (k = 3)
+         // };
 
          // 2. Critério de tolerância máxima em pixels para cada âncora
          const double tolerancia_pixels = 3.0;

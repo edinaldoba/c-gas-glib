@@ -94,90 +94,90 @@ static double v_fitness_local( const double *x, const ImagemCinza *img, const in
 
 
 // Fitness Local reforçado com varredura em forma de asterisco (Cruz + Xis)
-static double v_fitness_local_cruz_mais_xis( const double *x, const ImagemCinza *img, const int k ) {
-   g_return_val_if_fail( x && img && img->image, 0.0 );
-
-   ( void )k;
-
-   int cx = ( int )round( x[0] );
-   int cy = ( int )round( x[1] );
-
-   if ( cx < 0 || cx >= img->ncol || cy < 0 || cy >= img->nrow ) return 0.0;
-
-   // Vetores de direção: 8 direções
-   // [0,1]: Leste (+x), Oeste (-x)
-   // [2,3]: Sul (+y), Norte (-y) (Considerando a origem da imagem no canto superior esquerdo)
-   // [4,5]: Sudeste (+x, +y), Noroeste (-x, -y)
-   // [6,7]: Nordeste (+x, -y), Sudoeste (-x, +y)
-   int dx[8] = { 1, -1,  0,  0,  1, -1,  1, -1 };
-   int dy[8] = { 0,  0,  1, -1,  1, -1, -1,  1 };
-
-   // O raio máximo euclidiano da âncora
-   int raio_max_ortogonal = 40;
-   // Nas diagonais, r avança em dois eixos (distância real = r * sqrt(2)).
-   // Limitamos r a ~28 para que a varredura não passe do raio real de 40 pixels.
-   int raio_max_diagonal = 28;
-
-   double fitness_total = 0.0;
-
-   int centro_eh_preto = ( img->image[cy][cx] < 10 );
-
-   // Array para guardar o 'r' da última transição em cada uma das 8 direções
-   int ultimo_r[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-
-   for ( int dir = 0; dir < 8; dir++ ) {
-      int transicoes = 0;
-      int estado_atual = centro_eh_preto;
-
-      // Ajusta o limite do laço dependendo se a direção é diagonal ou ortogonal
-      int passos_maximos = ( dx[dir] != 0 && dy[dir] != 0 ) ? raio_max_diagonal : raio_max_ortogonal;
-
-      for ( int r = 1; r <= passos_maximos; r++ ) {
-         int px = cx + ( dx[dir] * r );
-         int py = cy + ( dy[dir] * r );
-
-         if ( px < 0 || px >= img->ncol || py < 0 || py >= img->nrow ) break;
-
-         int pixel_escuro = ( img->image[py][px] < 10 );
-
-         if ( pixel_escuro != estado_atual ) {
-            transicoes++;
-            estado_atual = pixel_escuro;
-
-            // Atualiza o índice do passo da última transição
-            ultimo_r[dir] = r;
-         }
-      }
-
-      int pontuacao = 5 - abs( transicoes - 5 );
-      if ( pontuacao < 0 ) pontuacao = 0;
-
-      fitness_total += pontuacao;
-   }
-
-   // A pontuação máxima agora é 40 (8 direções * 5 pontos)
-   double fitness_normalizado = fitness_total / 40.0;
-
-   if ( !centro_eh_preto ) {
-      fitness_normalizado *= 0.75;
-   }
-   // Desempate do Platô! Só aplicamos se ele encontrou o alvo (40 pontos inteiros)
-   else if ( fitness_total == 40.0 ) {
-
-      // Diferenças de distância (em passos) das bordas opostas
-      int erro_x     = abs( ultimo_r[0] - ultimo_r[1] ); // Leste vs Oeste
-      int erro_y     = abs( ultimo_r[2] - ultimo_r[3] ); // Sul vs Norte
-      int erro_diag1 = abs( ultimo_r[4] - ultimo_r[5] ); // Sudeste vs Noroeste
-      int erro_diag2 = abs( ultimo_r[6] - ultimo_r[7] ); // Nordeste vs Sudoeste
-
-      // O multiplicador 0.0075 ajusta perfeitamente o aumento para 4 eixos!
-      double penalidade_simetria = ( erro_x + erro_y ) * 0.0075 + ( erro_diag1 + erro_diag2 ) * 0.0075;
-
-      fitness_normalizado -= penalidade_simetria;
-   }
-
-   return fitness_normalizado;
-}
+// static double v_fitness_local_cruz_mais_xis( const double *x, const ImagemCinza *img, const int k ) {
+//    g_return_val_if_fail( x && img && img->image, 0.0 );
+//
+//    ( void )k;
+//
+//    int cx = ( int )round( x[0] );
+//    int cy = ( int )round( x[1] );
+//
+//    if ( cx < 0 || cx >= img->ncol || cy < 0 || cy >= img->nrow ) return 0.0;
+//
+//    // Vetores de direção: 8 direções
+//    // [0,1]: Leste (+x), Oeste (-x)
+//    // [2,3]: Sul (+y), Norte (-y) (Considerando a origem da imagem no canto superior esquerdo)
+//    // [4,5]: Sudeste (+x, +y), Noroeste (-x, -y)
+//    // [6,7]: Nordeste (+x, -y), Sudoeste (-x, +y)
+//    int dx[8] = { 1, -1,  0,  0,  1, -1,  1, -1 };
+//    int dy[8] = { 0,  0,  1, -1,  1, -1, -1,  1 };
+//
+//    // O raio máximo euclidiano da âncora
+//    int raio_max_ortogonal = 40;
+//    // Nas diagonais, r avança em dois eixos (distância real = r * sqrt(2)).
+//    // Limitamos r a ~28 para que a varredura não passe do raio real de 40 pixels.
+//    int raio_max_diagonal = 28;
+//
+//    double fitness_total = 0.0;
+//
+//    int centro_eh_preto = ( img->image[cy][cx] < 10 );
+//
+//    // Array para guardar o 'r' da última transição em cada uma das 8 direções
+//    int ultimo_r[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+//
+//    for ( int dir = 0; dir < 8; dir++ ) {
+//       int transicoes = 0;
+//       int estado_atual = centro_eh_preto;
+//
+//       // Ajusta o limite do laço dependendo se a direção é diagonal ou ortogonal
+//       int passos_maximos = ( dx[dir] != 0 && dy[dir] != 0 ) ? raio_max_diagonal : raio_max_ortogonal;
+//
+//       for ( int r = 1; r <= passos_maximos; r++ ) {
+//          int px = cx + ( dx[dir] * r );
+//          int py = cy + ( dy[dir] * r );
+//
+//          if ( px < 0 || px >= img->ncol || py < 0 || py >= img->nrow ) break;
+//
+//          int pixel_escuro = ( img->image[py][px] < 10 );
+//
+//          if ( pixel_escuro != estado_atual ) {
+//             transicoes++;
+//             estado_atual = pixel_escuro;
+//
+//             // Atualiza o índice do passo da última transição
+//             ultimo_r[dir] = r;
+//          }
+//       }
+//
+//       int pontuacao = 5 - abs( transicoes - 5 );
+//       if ( pontuacao < 0 ) pontuacao = 0;
+//
+//       fitness_total += pontuacao;
+//    }
+//
+//    // A pontuação máxima agora é 40 (8 direções * 5 pontos)
+//    double fitness_normalizado = fitness_total / 40.0;
+//
+//    if ( !centro_eh_preto ) {
+//       fitness_normalizado *= 0.75;
+//    }
+//    // Desempate do Platô! Só aplicamos se ele encontrou o alvo (40 pontos inteiros)
+//    else if ( fitness_total == 40.0 ) {
+//
+//       // Diferenças de distância (em passos) das bordas opostas
+//       int erro_x     = abs( ultimo_r[0] - ultimo_r[1] ); // Leste vs Oeste
+//       int erro_y     = abs( ultimo_r[2] - ultimo_r[3] ); // Sul vs Norte
+//       int erro_diag1 = abs( ultimo_r[4] - ultimo_r[5] ); // Sudeste vs Noroeste
+//       int erro_diag2 = abs( ultimo_r[6] - ultimo_r[7] ); // Nordeste vs Sudoeste
+//
+//       // O multiplicador 0.0075 ajusta perfeitamente o aumento para 4 eixos!
+//       double penalidade_simetria = ( erro_x + erro_y ) * 0.0075 + ( erro_diag1 + erro_diag2 ) * 0.0075;
+//
+//       fitness_normalizado -= penalidade_simetria;
+//    }
+//
+//    return fitness_normalizado;
+// }
 
 
 // ============================================================================
@@ -369,8 +369,6 @@ GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
 
    disp_max = disp_max / ( lim[0].n_dim * par->n_obj );
 
-   // printf("%lf\n",disp_max);getchar();
-
    GasPopulacao *elite = gas_alocar_populacao( par->n_obj, lim[0].n_dim );
 
    int geracao = 0;
@@ -400,7 +398,7 @@ GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
 
       // w1 inicia em ~0.95 e cai de forma igual e sincronizada para as 4 âncoras.
       // O CLAMP garante matematicamente que o peso nunca saia de [0, 1].
-      double w1 = CLAMP( 0.96 * proporcao, 0.0, 1.0 );
+      double w1 = CLAMP( 0.95 * proporcao, 0.0, 1.0 );
 
       for ( int i = 0; i < par->n_pop; i++ ) {
          pop[k][i].fitness = v_gas_fitness_coevolutivo( pop[k][i].x, NULL, img, w1, k );
@@ -445,7 +443,7 @@ GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
          double proporcao = dispersao_media_geral / disp_max;
 
          // w1 inicia em ~0.9 e cai. O CLAMP garante matematicamente que o peso nunca saia de [0, 1]
-         double w1 = CLAMP( 0.96 * proporcao, 0.0, 1.0 );
+         double w1 = CLAMP( 0.95 * proporcao, 0.0, 1.0 );
 
          for ( int i = 0; i < par->n_gen; i++ ) { // GG, isso estava errado a dias. Não se avalia membros antigos da população
             pop[k][i].fitness = v_gas_fitness_coevolutivo( pop[k][i].x, elite, img, w1, k );

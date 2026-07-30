@@ -72,7 +72,7 @@ void gas_display_gnuplot( const GasLimites *lim, const int geracao ) {
       // pt 7 -> ponto preenchido
       // palette -> aplica o mapa de cores ativo no Gnuplot conforme o fitness da col 3
       fprintf( p_plot, "    plot sprintf('geracao_%%d.pts', i) using 1:2:3 title sprintf('Geração: %%d', i) with points pt 1 palette\n" );
-      fprintf( p_plot, "    pause 0.015\n" );
+      fprintf( p_plot, "    pause 0.05\n" );
       fprintf( p_plot, "}\n" );
 
       fclose( p_plot );
