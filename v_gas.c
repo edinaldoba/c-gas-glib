@@ -16,209 +16,164 @@
 
 
 // ============================================================================
-// PROTÓTIPOS DAS FUNÇÕES INTERNAS DE FITNESS (A SEREM IMPLEMENTADAS POR VOCÊ)
+// FUNÇÃO DE FITNESS LOCAL (ALTAMENTE OTIMIZADA)
 // ============================================================================
-// Função auxiliar para testar o fitness de uma escala (raio) específica
-// static double avaliar_ancora_radial( int cx, int cy, const ImagemCinza *img, double raio_externo ) {
-//     int acertos = 0;
-//     int total = 0;
-//
-//     // Calcula o limite do bounding box para não varrer a imagem toda
-//     int limite = (int)ceil( raio_externo * 1.05 );
-//     double R2 = raio_externo * raio_externo; // Raio ao quadrado para evitar sqrt()
-//
-//     for ( int dy = -limite; dy <= limite; dy++ ) {
-//         for ( int dx = -limite; dx <= limite; dx++ ) {
-//
-//             int px = cx + dx;
-//             int py = cy + dy;
-//
-//             // Proteção contra Segmentation Fault
-//             if ( px < 0 || px >= img->ncol || py < 0 || py >= img->nrow ) continue;
-//
-//             // Distância Euclidiana ao quadrado
-//             double D2 = ( dx * dx ) + ( dy * dy );
-//
-//             // Distância normalizada ao quadrado (D2 / R2)
-//             double U2 = D2 / R2;
-//
-//             if ( U2 > 1.1025 ) continue; // 1.1025 é 1.05 ao quadrado. Fora do alvo!
-//
-//             // Verifica se o pixel na imagem é escuro (usando o seu limiar original)
-//             int pixel_escuro = ( img->image[py][px] < 10 );
-//
-//             // Define se a posição atual deveria ser escura baseada no seu desenho TikZ
-//             // Proporções ao quadrado:
-//             // Core (0.25^2 = 0.0625)
-//             // Ring 1 (0.45^2 = 0.2025 até 0.65^2 = 0.4225)
-//             // Ring 2 (0.85^2 = 0.7225 até 1.05^2 = 1.1025)
-//             gboolean zona_escura = ( U2 <= 0.0625 ) ||
-//                                    ( U2 >= 0.2025 && U2 <= 0.4225 ) ||
-//                                    ( U2 >= 0.7225 && U2 <= 1.1025 );
-//
-//             if ( zona_escura ) {
-//                 if ( pixel_escuro ) acertos++; // Bateu! Era pra ser escuro e é.
-//             } else {
-//                 if ( !pixel_escuro ) acertos++; // Bateu! Era pra ser claro (vazio) e é.
-//             }
-//             total++;
-//         }
-//     }
-//
-//     // Retorna o percentual de acertos (de 0.0 a 1.0)
-//     return ( total == 0 ) ? 0.0 : ( (double)acertos / total );
-// }
-
-// static double avaliar_ancora_radial( int cx, int cy, const ImagemCinza *img, double raio_externo ) {
-//    int acertos = 0;
-//    int total = 0;
-//
-//    int limite = ( int )ceil( raio_externo * 1.05 );
-//
-//    // Inversão para trocar a divisão cara dentro do loop por uma multiplicação
-//    double inv_R = 1.0 / raio_externo;
-//
-//    // Varreremos linearmente do centro até a borda (complexidade O(R))
-//    for ( int r = 0; r <= limite; r++ ) {
-//
-//       // Distância normalizada linear [0.0, 1.05]
-//       double u = r * inv_R;
-//
-//       // Proporções lineares (raízes dos seus U2 antigos):
-//       // Core: <= 0.25
-//       // Ring 1: 0.45 a 0.65
-//       // Ring 2: 0.85 a 1.05
-//       gboolean zona_escura = ( u <= 0.25 ) ||
-//                              ( u >= 0.45 && u <= 0.65 ) ||
-//                              ( u >= 0.85 && u <= 1.05 );
-//
-//       // Deslocamento para as 4 diagonais ( r * cos(45°) )
-//       int d = ( int )round( r * 0.70710678 );
-//
-//       // 8 pontos distribuídos em formato de asterisco (*) no raio 'r'
-//       // Vetores: E, W, S, N, SE, NW, SW, NE
-//       int pontos[8][2] = {
-//          { cx + r, cy }, { cx - r, cy }, { cx, cy + r }, { cx, cy - r },
-//          { cx + d, cy + d }, { cx - d, cy - d }, { cx - d, cy + d }, { cx + d, cy - d }
-//       };
-//
-//       // Se r == 0, todos os 8 pontos são o centro. Evita checar o mesmo pixel 8 vezes.
-//       int num_pontos_a_testar = ( r == 0 ) ? 1 : 8;
-//
-//       for ( int i = 0; i < num_pontos_a_testar; i++ ) {
-//          int px = pontos[i][0];
-//          int py = pontos[i][1];
-//
-//          if ( px < 0 || px >= img->ncol || py < 0 || py >= img->nrow ) continue;
-//
-//          int pixel_escuro = ( img->image[py][px] < 10 );
-//
-//          // Verifica tanto os anéis pretos quanto os brancos
-//          if ( zona_escura ) {
-//             if ( pixel_escuro ) acertos++;
-//          } else {
-//             if ( !pixel_escuro ) acertos++;
-//          }
-//          total++;
-//       }
-//    }
-//
-//    return ( total == 0 ) ? 0.0 : ( ( double )acertos / total );
-// }
-//
-// static double v_fitness_local( const double *x, const ImagemCinza *img, const int k ) {
-//    g_return_val_if_fail( x && img && img->image, 0.0 );
-//
-//    // O quadrante 'k' não determina mais a direção da varredura porque círculos são simétricos!
-//    // Mas ele pode ser mantido na assinatura para compatibilidade com a arquitetura.
-//    ( void )k;
-//
-//    int cx = ( int )round( x[0] );
-//    int cy = ( int )round( x[1] );
-//
-//    // 1. Array com as 5 escalas diferentes (raio externo em pixels)
-//    // Ajuste esses valores baseados na resolução aproximada do escaneamento do gabarito
-//    double escalas[] = { 15.0, 20.0, 25.0, 30.0, 35.0 };
-//    int n_escalas = sizeof( escalas ) / sizeof( escalas[0] );
-//
-//    double max_fitness = 0.0;
-//
-//    // 2. Testa todas as escalas e fica com a que tiver o maior nível de acerto
-//    for ( int i = 0; i < n_escalas; i++ ) {
-//       double fit = avaliar_ancora_radial( cx, cy, img, escalas[i] );
-//       if ( fit > max_fitness ) {
-//          max_fitness = fit;
-//       }
-//    }
-//
-//    // Como os anéis cobrem muita área, a chance de um falso positivo (bater 100%) em sujeira é zero.
-//    // Retornamos a escala que melhor "encaixou" no formato do alvo.
-//    return max_fitness;
-// }
-
-
 static double v_fitness_local( const double *x, const ImagemCinza *img, const int k ) {
    g_return_val_if_fail( x && img && img->image, 0.0 );
 
-   // O quadrante 'k' não é mais necessário para a direção geométrica,
-   // pois a cruz é simétrica. Mantido na assinatura por arquitetura.
    ( void )k;
 
    int cx = ( int )round( x[0] );
    int cy = ( int )round( x[1] );
 
-   // Se o chute do GA caiu fora dos limites da imagem, fitness = 0 direto
    if ( cx < 0 || cx >= img->ncol || cy < 0 || cy >= img->nrow ) return 0.0;
 
-   // Vetores de direção para a cruz: Leste, Oeste, Sul, Norte
+   // Vetores de direção: 0(Leste), 1(Oeste), 2(Sul), 3(Norte)
    int dx[4] = { 1, -1,  0,  0 };
    int dy[4] = { 0,  0,  1, -1 };
 
    int raio_max = 40;
    double fitness_total = 0.0;
 
-   // O centro verdadeiro do alvo é PRETO. Guardamos o estado do pixel central.
    int centro_eh_preto = ( img->image[cy][cx] < 10 );
 
-   // Lançamos 4 "raios" a partir do centro
+   // NOVO: Array para guardar o 'r' da última transição em cada uma das 4 direções
+   int ultimo_r[4] = { 0, 0, 0, 0 };
+
    for ( int dir = 0; dir < 4; dir++ ) {
       int transicoes = 0;
       int estado_atual = centro_eh_preto;
 
-      // Caminha do pixel 1 até o raio máximo de 40
       for ( int r = 1; r <= raio_max; r++ ) {
          int px = cx + ( dx[dir] * r );
          int py = cy + ( dy[dir] * r );
 
-         // Se bater na borda da imagem, interrompe este raio
          if ( px < 0 || px >= img->ncol || py < 0 || py >= img->nrow ) break;
 
          int pixel_escuro = ( img->image[py][px] < 10 );
 
-         // Se mudou de cor (Branco->Preto ou Preto->Branco), conta a transição
          if ( pixel_escuro != estado_atual ) {
             transicoes++;
             estado_atual = pixel_escuro;
+
+            // NOVO: Atualiza a distância da transição mais recente
+            ultimo_r[dir] = r;
          }
       }
 
-      // Matemática do Gradiente: 5 - |transicoes - 5|
-      // Perfeito (5) = 5 pontos. Deslocado (4 ou 6) = 4 pontos. Ruído (>=10) = 0 pontos.
       int pontuacao = 5 - abs( transicoes - 5 );
-      if ( pontuacao < 0 ) pontuacao = 0; // Impede pontuação negativa em áreas de muito ruído
+      if ( pontuacao < 0 ) pontuacao = 0;
 
       fitness_total += pontuacao;
    }
 
-   // A pontuação máxima teórica é 20 (4 direções * 5 pontos perfeitos)
-   // Normalizamos para o intervalo de [0.0 a 1.0]
    double fitness_normalizado = fitness_total / 20.0;
 
-   // Refinamento final: Se o GA tentar centralizar a âncora em uma das "valas" brancas
-   // do alvo, ele conseguirá no máximo 4 transições. Mas para garantir que ele seja
-   // expulso das zonas brancas e caia no "miolo" preto, aplicamos uma penalidade.
    if ( !centro_eh_preto ) {
       fitness_normalizado *= 0.75;
+   }
+   // NOVO: Desempate do Platô! Só aplicamos se ele encontrou o alvo (20 pontos)
+   else if ( fitness_total == 20.0 ) {
+
+      // Calcula a diferença de distância das bordas opostas
+      // Se estiver perfeitamente centralizado, erro_x e erro_y serão 0 (ou no máximo 1 por conta do grid de pixels)
+      int erro_x = abs( ultimo_r[0] - ultimo_r[1] ); // Diferença entre Leste e Oeste
+      int erro_y = abs( ultimo_r[2] - ultimo_r[3] ); // Diferença entre Sul e Norte
+
+      // Aplicamos uma penalidade minúscula (0.0001 por pixel de assimetria)
+      // Ex: Se o candidato está 3 pixels pro lado direito, erro_x = 6. Penalidade = 0.0006.
+      // O fitness cai de 1.0000 para 0.9994.
+      double penalidade_simetria = ( erro_x + erro_y ) * 0.015;
+
+      // O centro absoluto mantém 1.0000 (ou o mais próximo disso possível)
+      fitness_normalizado -= penalidade_simetria;
+   }
+
+   return fitness_normalizado;
+}
+
+
+// Fitness Local reforçado com varredura em forma de asterisco (Cruz + Xis)
+static double v_fitness_local_cruz_mais_xis( const double *x, const ImagemCinza *img, const int k ) {
+   g_return_val_if_fail( x && img && img->image, 0.0 );
+
+   ( void )k;
+
+   int cx = ( int )round( x[0] );
+   int cy = ( int )round( x[1] );
+
+   if ( cx < 0 || cx >= img->ncol || cy < 0 || cy >= img->nrow ) return 0.0;
+
+   // Vetores de direção: 8 direções
+   // [0,1]: Leste (+x), Oeste (-x)
+   // [2,3]: Sul (+y), Norte (-y) (Considerando a origem da imagem no canto superior esquerdo)
+   // [4,5]: Sudeste (+x, +y), Noroeste (-x, -y)
+   // [6,7]: Nordeste (+x, -y), Sudoeste (-x, +y)
+   int dx[8] = { 1, -1,  0,  0,  1, -1,  1, -1 };
+   int dy[8] = { 0,  0,  1, -1,  1, -1, -1,  1 };
+
+   // O raio máximo euclidiano da âncora
+   int raio_max_ortogonal = 40;
+   // Nas diagonais, r avança em dois eixos (distância real = r * sqrt(2)).
+   // Limitamos r a ~28 para que a varredura não passe do raio real de 40 pixels.
+   int raio_max_diagonal = 28;
+
+   double fitness_total = 0.0;
+
+   int centro_eh_preto = ( img->image[cy][cx] < 10 );
+
+   // Array para guardar o 'r' da última transição em cada uma das 8 direções
+   int ultimo_r[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+   for ( int dir = 0; dir < 8; dir++ ) {
+      int transicoes = 0;
+      int estado_atual = centro_eh_preto;
+
+      // Ajusta o limite do laço dependendo se a direção é diagonal ou ortogonal
+      int passos_maximos = ( dx[dir] != 0 && dy[dir] != 0 ) ? raio_max_diagonal : raio_max_ortogonal;
+
+      for ( int r = 1; r <= passos_maximos; r++ ) {
+         int px = cx + ( dx[dir] * r );
+         int py = cy + ( dy[dir] * r );
+
+         if ( px < 0 || px >= img->ncol || py < 0 || py >= img->nrow ) break;
+
+         int pixel_escuro = ( img->image[py][px] < 10 );
+
+         if ( pixel_escuro != estado_atual ) {
+            transicoes++;
+            estado_atual = pixel_escuro;
+
+            // Atualiza o índice do passo da última transição
+            ultimo_r[dir] = r;
+         }
+      }
+
+      int pontuacao = 5 - abs( transicoes - 5 );
+      if ( pontuacao < 0 ) pontuacao = 0;
+
+      fitness_total += pontuacao;
+   }
+
+   // A pontuação máxima agora é 40 (8 direções * 5 pontos)
+   double fitness_normalizado = fitness_total / 40.0;
+
+   if ( !centro_eh_preto ) {
+      fitness_normalizado *= 0.75;
+   }
+   // Desempate do Platô! Só aplicamos se ele encontrou o alvo (40 pontos inteiros)
+   else if ( fitness_total == 40.0 ) {
+
+      // Diferenças de distância (em passos) das bordas opostas
+      int erro_x     = abs( ultimo_r[0] - ultimo_r[1] ); // Leste vs Oeste
+      int erro_y     = abs( ultimo_r[2] - ultimo_r[3] ); // Sul vs Norte
+      int erro_diag1 = abs( ultimo_r[4] - ultimo_r[5] ); // Sudeste vs Noroeste
+      int erro_diag2 = abs( ultimo_r[6] - ultimo_r[7] ); // Nordeste vs Sudoeste
+
+      // O multiplicador 0.0075 ajusta perfeitamente o aumento para 4 eixos!
+      double penalidade_simetria = ( erro_x + erro_y ) * 0.0075 + ( erro_diag1 + erro_diag2 ) * 0.0075;
+
+      fitness_normalizado -= penalidade_simetria;
    }
 
    return fitness_normalizado;
@@ -303,16 +258,7 @@ static double v_fitness_geometrico( const double *x, const GasPopulacao *elite, 
       simulacao[i].x = ( i == k ) ? ( double * )x : elite[i].x;
    }
 
-   // 2. Calcula a área e as dimensões teóricas ideais
-   double area = v_gas_calcular_area_ancoras( simulacao, 4 );
-   if ( area < 100.0 ) return 0.0; // Esta barreira garante que as arestas > 0
-
-   // double area_elite = v_gas_calcular_area_ancoras( elite, 4 );
-
-   double largura_ideal = sqrt( area * ( 14.0 / 11.0 ) );
-   double altura_ideal  = sqrt( area * ( 11.0 / 14.0 ) );
-
-   // 3. Extrai as distâncias reais
+   // 2. Extrai as distâncias reais PRIMEIRO (Para resolver o "Ovo e a Galinha")
    double top_w   = v_gas_distancia( simulacao[0].x, simulacao[1].x );
    double bot_w   = v_gas_distancia( simulacao[3].x, simulacao[2].x );
    double left_h  = v_gas_distancia( simulacao[0].x, simulacao[3].x );
@@ -321,30 +267,50 @@ static double v_fitness_geometrico( const double *x, const GasPopulacao *elite, 
    double largura_real = ( top_w + bot_w ) / 2.0;
    double altura_real  = ( left_h + right_h ) / 2.0;
 
-   // 4. Avaliação de Erros Geométricos
-   // double erro_area = fabs( area - area_elite ) / area_elite;
-   double erro_w    = fabs( largura_real - largura_ideal ) / largura_ideal;
-   double erro_h    = fabs( altura_real - altura_ideal ) / altura_ideal;
+   // Barreira contra colapso geométrico (arestas muito pequenas)
+   if ( largura_real < 50.0 || altura_real < 50.0 ) return 0.0;
 
-   // NOVO: Cálculo do erro de ortogonalidade aproveitando as arestas já calculadas
+   // 3. Detecção Automática da Direção da Página
+   // Se o GA formou um retângulo mais largo que alto, assumimos gabarito Horizontal ('h')
+   // Caso contrário, assumimos Vertical ('v')
+   double proporcao_alvo;
+   if ( largura_real > altura_real ) {
+      proporcao_alvo = 14.0 / 11.0; // Horizontal
+   } else {
+      proporcao_alvo = 10.0 / 15.0; // Vertical
+   }
+
+   // 4. Calcula a área e as dimensões teóricas ideais
+   double area = v_gas_calcular_area_ancoras( simulacao, 4 );
+
+   // Como proporcao_alvo = Largura / Altura, deduzimos as dimensões ideais a partir da área:
+   double largura_ideal = sqrt( area * proporcao_alvo );
+   double altura_ideal  = sqrt( area / proporcao_alvo );
+
+   // 5. Avaliação de Erros Geométricos
+   double erro_w = fabs( largura_real - largura_ideal ) / largura_ideal;
+   double erro_h = fabs( altura_real - altura_ideal ) / altura_ideal;
+
+   // Cálculo do erro de ortogonalidade aproveitando as arestas já calculadas
    double erro_ortogonal = v_gas_erro_ortogonal( simulacao[0].x, simulacao[1].x,
                            simulacao[2].x, simulacao[3].x,
                            top_w, bot_w, left_h, right_h );
 
-   // 5. Fitness (Erro Relativo Normalizado)
+   // 6. Fitness (Erro Relativo Normalizado)
    // Os três erros gravitam de 0.0 a 1.0 (ou mais em deformações severas).
-   // (void)erro_area;
    double f_geo = 1.0 / ( 1.0 + erro_w + erro_h + erro_ortogonal );
 
    return f_geo;
 }
 
+
+
 // ============================================================================
 // FUNÇÃO GLOBAL DE AVALIAÇÃO (COEVOLUÇÃO)
 // ============================================================================
 
-double v_gas_fitness_coevolutivo( const double *x, const GasPopulacao *elite, const ImagemCinza *img,
-                                  const double w1, const int k ) {
+static double v_gas_fitness_coevolutivo( const double *x, const GasPopulacao *elite, const ImagemCinza *img,
+                                         const double w1, const int k ) {
    g_return_val_if_fail( x && img, 0.0 );
 
    // Pesos da combinação linear para gerações > 0 (podem ser ajustados depois)
@@ -373,14 +339,11 @@ double v_gas_fitness_coevolutivo( const double *x, const GasPopulacao *elite, co
 
 
 
-
-
-
 // ============================================================================
 // PIPELINE PRINCIPAL DE COEVOLUÇÃO
 // ============================================================================
-GasPopulacao *v_gas_pipeline( const ImagemCinza *img, const GasParametros *par, const GasLimites *lim,
-                              gboolean feedback_visual ) {
+GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
+                              const GasLimites *lim, gboolean feedback_visual ) {
    g_return_val_if_fail( par && lim, NULL );
 
    // Alocação da matriz de dispersão

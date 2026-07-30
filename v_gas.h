@@ -4,6 +4,7 @@
 #include "gas.h"
 
 
+
 // ============================================================================
 // ESTRUTURAS DE VISÃO COMPUTACIONAL
 // ============================================================================
@@ -16,14 +17,11 @@ typedef struct {
    int **image;     // Matriz bidimensional de tons de cinza (alocada dinamicamente)
 } ImagemCinza;
 
+
 // ============================================================================
 // ASSINATURAS DE FUNÇÕES
 // ============================================================================
-
-double v_gas_fitness_coevolutivo( const double *x, const GasPopulacao *elite, const ImagemCinza *img,
-                                  const double w1, const int k );
-
-GasPopulacao *v_gas_pipeline( const ImagemCinza *img, const GasParametros *par, const GasLimites *lim,
-                              gboolean feedback_visual );
+GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
+                              const GasLimites *lim, gboolean feedback_visual );
 
 #endif // V_GAS_H

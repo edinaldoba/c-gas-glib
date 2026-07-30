@@ -11,6 +11,7 @@
 #include "gas.h"
 #include "v_gas.h"
 
+
 // ============================================================================
 // PROTÓTIPOS INTERNOS
 // ============================================================================
@@ -52,12 +53,12 @@ int main( void ) {
 
    GasLimites *lim = v_gas_limites( img->nrow, img->ncol, par.n_obj );
 
-
    int sucessos = 0;
    GasPopulacao *melhor = NULL;
 
    if ( feedback_visual ) {
       melhor = v_gas_pipeline( img, &par, lim, feedback_visual );
+
    } else {
       // 1. Cláusula de redução para garantir a integridade da contagem
       #pragma omp parallel for schedule(static) reduction(+:sucessos)
@@ -80,7 +81,7 @@ int main( void ) {
          };
 
          // 2. Critério de tolerância máxima em pixels para cada âncora
-         const double tolerancia_pixels = 5.0;
+         const double tolerancia_pixels = 3.0;
          gboolean convergiu = TRUE;
 
          for ( int k = 0; k < par_local.n_obj; k++ ) {
