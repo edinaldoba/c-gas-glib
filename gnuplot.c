@@ -6,7 +6,9 @@
 
 #include <stdio.h>
 #include <glib.h>
+#include <math.h>
 
+#include "gas.h"
 #include "gnuplot.h"
 
 
@@ -94,7 +96,7 @@ void gas_gravar_pontos( const GasPopulacao *pop, const int n_pop, const int gera
 }
 
 
-void gas_display_terminal( const GasPopulacao *pop, const int n_dim, const double dispersao_max, const int geracao ) {
+void gas_display_terminal( const GasPopulacao *pop, const int n_dim, const double dispersao_media, const int geracao ) {
    g_return_if_fail( pop && n_dim > 0 );
 
    printf( "Geração: %d\n", geracao );
@@ -103,5 +105,23 @@ void gas_display_terminal( const GasPopulacao *pop, const int n_dim, const doubl
       printf( "%.8f  ", pop->x[i] );
    }
    printf( "\nAvaliação do Mais Apto: %.8f\n", pop->fitness );
-   printf( "Coeficiente de Dispersão: %.8f\n\n", dispersao_max );
+   printf( "Coeficiente de Dispersão: %.8f\n\n", dispersao_media );
+}
+
+void v_gas_display_terminal( const GasPopulacao *elite, const double *dispersao_media, const int geracao ) {
+   g_return_if_fail( elite && dispersao_media );
+
+   printf( "Geração: %d\n", geracao );
+
+   printf( "Dispersão: %.4f  %.4f  %.4f  %.4f\n",
+           dispersao_media[0], dispersao_media[1], dispersao_media[2], dispersao_media[3] );
+
+   printf( "Fitness:   %.4f  %.4f  %.4f  %.4f\n\n",
+           elite[0].fitness, elite[1].fitness, elite[2].fitness, elite[3].fitness );
+
+   printf( "A( %4d, %4d )    B( %4d, %4d )\nD( %4d, %4d )    C( %4d, %4d )\n\n",
+
+           ( int )round( elite[0].x[0] ), ( int )round( elite[0].x[1] ), ( int )round( elite[1].x[0] ), ( int )round( elite[1].x[1] ),
+           ( int )round( elite[3].x[0] ), ( int )round( elite[3].x[1] ), ( int )round( elite[2].x[0] ), ( int )round( elite[2].x[1] ) );
+
 }

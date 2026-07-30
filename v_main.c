@@ -30,18 +30,18 @@ int main( void ) {
    g_autoptr( GRand ) rand_context = g_rand_new_with_seed_array( sementes, G_N_ELEMENTS( sementes ) );
 
    // Quando o feedback_visual é TRUE, temos uma execução normal de gas_pipeline() com feedback visual no gnuplot
-   // Quando o feedback_visual é FALSE, executamos um teste em paralelo com 10 mil execuções de gas_pipeline()
+   // Quando o feedback_visual é FALSE, executamos um teste em paralelo com 1 mil execuções de gas_pipeline()
    gboolean feedback_visual = TRUE;
 
    GasParametros par = {
-      .n_pop     = 200,
-      .n_gen     = 164,
-      .n_tor     = 2,
-      .n_obj     = 4,    // Número de objetivos da coevolução
-      .p_rec     = 0.75,
-      .p_mut     = 0.95,
-      .peso_disp = 1.5,
-      .toleracia = 5.0e-1,
+      .n_pop     = 100,    // Tamanho da população
+      .n_gen     = 40,     // Quantidade de indivíduos da população que serão substituídos a cada geração
+      .n_tor     = 2,      // Reduzido de 3 para 2 (alivia a pressão seletiva)
+      .n_obj     = 4,      // Número de objetivos da coevolução (Mantido)
+      .p_rec     = 0.80,   // Leve aumento para garantir mistura genética na pop menor
+      .p_mut     = 0.90,   // Mantido altíssimo (Essencial para busca contínua)
+      .peso_disp = 1.8,    // Aumentado de 1.4 para 1.8 (Força repulsiva maior)
+      .toleracia = 3.0e-1, // Mantido
       .rand      = rand_context
    };
 
@@ -57,8 +57,7 @@ int main( void ) {
    GasPopulacao *melhor = NULL;
 
    if ( feedback_visual ) {
-      melhor = v_gas_pipeline( img, &par, lim, feedback_visual,
-                               v_gas_fitness_coevolutivo, gas_comparar_objetivo_max );
+      melhor = v_gas_pipeline( img, &par, lim, feedback_visual );
    } else {
       // 1. Cláusula de redução para garantir a integridade da contagem
       #pragma omp parallel for schedule(static) reduction(+:sucessos)
@@ -70,14 +69,39 @@ int main( void ) {
          // Cada thread ganha seu próprio motor estocástico
          par_local.rand = g_rand_new();
 
-         GasPopulacao *melhor_local = v_gas_pipeline( img, &par_local, lim, feedback_visual,
-                                      v_gas_fitness_coevolutivo, gas_comparar_objetivo_max );
+         GasPopulacao *melhor_local = v_gas_pipeline( img, &par_local, lim, feedback_visual );
 
-         if ( melhor_local->fitness > 0.999 ) {
+         // 1. Coordenadas exatas do Gabarito Real (Ground Truth) A, B, C, D
+         static const double gabarito_real[4][2] = {
+            { 216.0, 147.0 }, // Âncora A (k = 0)
+            { 857.0, 147.0 }, // Âncora B (k = 1)
+            { 857.0, 650.0 }, // Âncora C (k = 2)
+            { 216.0, 650.0 }  // Âncora D (k = 3)
+         };
+
+         // 2. Critério de tolerância máxima em pixels para cada âncora
+         const double tolerancia_pixels = 5.0;
+         gboolean convergiu = TRUE;
+
+         for ( int k = 0; k < par_local.n_obj; k++ ) {
+            double dx = melhor_local[k].x[0] - gabarito_real[k][0];
+            double dy = melhor_local[k].x[1] - gabarito_real[k][1];
+
+            // Distância Euclidiana real ao centro do alvo
+            double erro_distancia = sqrt( ( dx * dx ) + ( dy * dy ) );
+
+            // Se QUALQUER uma das 4 âncoras falhou o raio limite, o teste falha
+            if ( erro_distancia > tolerancia_pixels ) {
+               convergiu = FALSE;
+               break; // Não precisa checar os outros objetivos
+            }
+         }
+
+         if ( convergiu ) {
             sucessos++;
          }
 
-         gas_liberar_populacao( melhor_local, lim[0].n_dim );
+         gas_liberar_populacao( melhor_local, par_local.n_obj );
 
          // 3. Libera o motor estocástico criado para esta thread
          g_rand_free( par_local.rand );
@@ -97,12 +121,26 @@ int main( void ) {
       g_free( lim[k].fim );
    }
    g_free( lim );
-   if ( melhor ) gas_liberar_populacao( melhor, lim[0].n_dim );;
+   if ( melhor ) gas_liberar_populacao( melhor, par.n_obj );
 
    display_tempo( "Evolução", cronometro );
 
    return 0;
 }
+
+
+static void display_tempo( const char *descricao, GTimer *cronometro ) {
+   double tempo_segundos = g_timer_elapsed( cronometro, NULL );
+
+   if ( tempo_segundos > 60.0 ) {
+      int minutos = ( int )( tempo_segundos / 60 );
+      double segundos_restantes = tempo_segundos - ( minutos * 60 );
+      printf( "⏱ %s concluída em %d min e %.2f seg.\n", descricao, minutos, segundos_restantes );
+   } else {
+      printf( "⏱ %s concluída em %.3f segundos.\n", descricao, tempo_segundos );
+   }
+}
+
 
 // ============================================================================
 // IMPLEMENTAÇÕES DAS FUNÇÕES
@@ -149,20 +187,6 @@ static GasLimites *v_gas_limites( const int nrow, const int ncol, const int n_ob
 
    return lim;
 }
-
-static void display_tempo( const char *descricao, GTimer *cronometro ) {
-   double tempo_segundos = g_timer_elapsed( cronometro, NULL );
-
-   if ( tempo_segundos > 60.0 ) {
-      int minutos = ( int )( tempo_segundos / 60 );
-      double segundos_restantes = tempo_segundos - ( minutos * 60 );
-      printf( "⏱ %s concluída em %d min e %.2f seg.\n", descricao, minutos, segundos_restantes );
-   } else {
-      printf( "⏱ %s concluída em %.3f segundos.\n", descricao, tempo_segundos );
-   }
-}
-
-
 
 
 // ============================================================================

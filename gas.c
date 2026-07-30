@@ -51,7 +51,7 @@ void gas_gerar_sementes( guint32 *sementes ) {
    guint32 alta  = ( guint32 )( ciclos_cpu >> 32 );
 
    // Imprime para manter a rastreabilidade se precisar reproduzir a execução
-   g_print( "Semente Monotonica (Ciclos): %" G_GINT64_FORMAT "\n", ciclos_cpu );
+   // g_print( "Semente Monotonica (Ciclos): %" G_GINT64_FORMAT "\n", ciclos_cpu );
 
    // 3. Monta o array de sementes multiplicando por constantes de dispersão
    sementes[0] = baixa;
@@ -343,7 +343,7 @@ GasPopulacao *gas_pipeline( const GasParametros *par, const GasLimites *lim, gbo
       gas_mutacao_creep( pop, coef_disp, lim, par );
       // gas_mutacao_direcional( pop, coef_disp, lim->n_dim, par );
 
-      for ( int i = 0; i < par->n_pop; i++ ) {
+      for ( int i = 0; i < par->n_gen; i++ ) {
          pop[i].fitness = gas_avaliar( pop[i].x, lim->n_dim );
       }
       qsort( pop, par->n_pop, sizeof( GasPopulacao ), gas_comparar );

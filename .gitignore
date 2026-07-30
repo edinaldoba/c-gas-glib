@@ -17,7 +17,7 @@ img/*
 # IDES e Editores de Código
 compile_flags.txt
 formatar.sh
-sincronizar.sh
+github.sh
 .vscode/
 .idea/
 *.swp

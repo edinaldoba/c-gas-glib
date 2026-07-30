@@ -33,7 +33,7 @@ int main( void ) {
    // =========================================================
    // 2. CHAVE MESTRA: Mude apenas esta variável para alternar o teste
    // =========================================================
-   GasTesteId teste_atual = GAS_TESTE_F10;
+   GasTesteId teste_atual = GAS_TESTE_F6;
 
    // Quando o feedback_visual é TRUE, temos uma execução normal de gas_pipeline() com feedback visual no gnuplot
    // Quando o feedback_visual é FALSE, executamos um teste em paralelo com 10 mil execuções de gas_pipeline()
@@ -155,6 +155,7 @@ int main( void ) {
 
    if ( feedback_visual ) {
       melhor = gas_pipeline( &par, &lim, feedback_visual, gas_avaliar, gas_comparar );
+
    } else {
       // Adicionada a cláusula de redução para a variável sucessos
       #pragma omp parallel for schedule(static) reduction(+:sucessos)
