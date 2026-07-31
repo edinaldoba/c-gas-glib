@@ -51,6 +51,7 @@ int main( void ) {
    ImagemCinza *img = g_new0( ImagemCinza, 1 );
    // imread_gray( img, "./img/imgh.ppm" );
    imread_gray( img, "./img/imgv.ppm" );
+   imread_gray( img, "./img/imgv_ruido_severo.ppm" );
 
    GasLimites *lim = v_gas_limites( img->nrow, img->ncol, par.n_obj );
 

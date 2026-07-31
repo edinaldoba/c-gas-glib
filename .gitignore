@@ -14,6 +14,7 @@ gnuplot/*.txt
 img/*
 !img/imgh.ppm
 !img/imgv.ppm
+!img/imgv_ruido_severo.ppm
 
 # IDES e Editores de Código
 compile_flags.txt
