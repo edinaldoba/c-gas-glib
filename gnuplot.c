@@ -26,7 +26,7 @@ void gas_display_gnuplot( const GasLimites *lim, const int geracao ) {
       fprintf( p_plot, "set xrange [0:%d]\n", geracao );
       fprintf( p_plot, "set xlabel 'Geração'\n" );
       fprintf( p_plot, "set ylabel 'Avaliação'\n" );
-      fprintf( p_plot, "plot 'E.pts' title 'Evolução da Avaliação do Mais Apto' with lines lt 3 lw 2\n" );
+      fprintf( p_plot, "plot 'E.pts' title 'Evolução da Avaliação do Mais Apto' with lines lt 3 lw 3\n" );
       fclose( p_plot );
    }
 
@@ -39,7 +39,7 @@ void gas_display_gnuplot( const GasLimites *lim, const int geracao ) {
       fprintf( p_plot, "set xrange [0:%d]\n", geracao );
       fprintf( p_plot, "set xlabel 'Geração'\n" );
       fprintf( p_plot, "set ylabel 'Dispersão'\n" );
-      fprintf( p_plot, "plot 'D.pts' title 'Evolução do Coeficiente de Dispersão' with lines lt 3 lw 2\n" );
+      fprintf( p_plot, "plot 'D.pts' title 'Evolução do Coeficiente de Dispersão' with lines lt 3 lw 3\n" );
       fclose( p_plot );
    }
 
@@ -64,14 +64,14 @@ void gas_display_gnuplot( const GasLimites *lim, const int geracao ) {
       // fprintf( p_plot, "set tics tc rgb 'white'\n" );
 
       // Gradiente clássico estilo Jet: 0 = Azul (mínimo), 1 = Vermelho (máximo)
-      fprintf( p_plot, "set palette defined ( 0 'dark-blue', 0.5 'yellow', 1.0 'red' )\n" );
+      fprintf( p_plot, "set palette defined ( 0 'dark-blue', 0.5 'green', 1.0 'red' )\n" );
 
       // Usamos o laço nativo do gnuplot para iterar sobre os arquivos .pts gerados
       fprintf( p_plot, "do for [i=0:%d] {\n", geracao );
       // 1:2:3 -> X na col 1, Y na col 2, Cor (Fitness) na col 3
       // pt 7 -> ponto preenchido
       // palette -> aplica o mapa de cores ativo no Gnuplot conforme o fitness da col 3
-      fprintf( p_plot, "    plot sprintf('geracao_%%d.pts', i) using 1:2:3 title sprintf('Geração: %%d', i) with points pt 1 palette\n" );
+      fprintf( p_plot, "    plot sprintf('geracao_%%d.pts', i) using 1:2:3 title sprintf('Geração: %%d', i) with points pt 3 palette\n" );
       fprintf( p_plot, "    pause 0.05\n" );
       fprintf( p_plot, "}\n" );
 

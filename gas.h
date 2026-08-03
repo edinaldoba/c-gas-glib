@@ -5,6 +5,9 @@
 
 typedef struct {
    int n_pop, n_gen, n_tor, n_obj;
+   int max_geracoes;
+   int total_geracoes;
+   int limiar;
    double p_rec, p_mut, peso_disp, toleracia;
    GRand *rand; // <- Ponteiro para o gerador de números aleatórios
 } GasParametros;
@@ -37,6 +40,7 @@ void gas_liberar_populacao( GasPopulacao *pop, const int n_pop );
 void gas_liberar_genitores( GasGenitores *gen, const int n_gen );
 
 void gas_populacao_inicial( GasPopulacao *pop, const GasParametros *par, const GasLimites *lim );
+void gas_populacao_inicial_uniforme( GasPopulacao *pop, const GasParametros *par, const GasLimites *lim );
 
 void gas_projetar_pca( const GasPopulacao *pop, GasPopulacao *pop_2d, int n_pop, int n_dim );
 

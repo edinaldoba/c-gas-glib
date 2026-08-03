@@ -115,6 +115,50 @@ void gas_populacao_inicial( GasPopulacao *pop, const GasParametros *par, const G
 
 
 
+void gas_populacao_inicial_uniforme( GasPopulacao *pop, const GasParametros *par, const GasLimites *lim ) {
+   g_return_if_fail( pop && par && lim );
+
+   // Aloca um array temporário para armazenar os índices das fatias (bins)
+   int *indices = g_new( int, par->n_pop );
+
+   // Processa uma dimensão por vez para garantir a distribuição uniforme em cada eixo
+   for ( int j = 0; j < lim->n_dim; j++ ) {
+
+      // 1. Cria fatias ordenadas de 0 até n-1
+      for ( int i = 0; i < par->n_pop; i++ ) {
+         indices[i] = i;
+      }
+
+      // 2. Embaralhamento de Fisher-Yates (Shuffle)
+      // Isso garante que a combinação das dimensões seja aleatória (não forme uma linha diagonal)
+      for ( int i = par->n_pop - 1; i > 0; i-- ) {
+         int k = g_rand_int_range( par->rand, 0, i + 1 );
+         int temp = indices[i];
+         indices[i] = indices[k];
+         indices[k] = temp;
+      }
+
+      // 3. Distribui os indivíduos dentro de suas respectivas fatias
+      double tamanho_fatia = ( lim->fim[j] - lim->ini[j] ) / ( double )par->n_pop;
+
+      for ( int i = 0; i < par->n_pop; i++ ) {
+         int bin = indices[i]; // Qual fatia este indivíduo pegou nesta dimensão?
+
+         // Calcula os limites reais desta fatia específica no espaço de busca
+         double inicio_fatia = lim->ini[j] + ( bin * tamanho_fatia );
+         double fim_fatia    = inicio_fatia + tamanho_fatia;
+
+         // Sorteia um ponto uniformemente *dentro* da fatia
+         pop[i].x[j] = g_rand_double_range( par->rand, inicio_fatia, fim_fatia );
+      }
+   }
+
+   // Libera a memória temporária
+   g_free( indices );
+}
+
+
+
 
 void gas_projetar_pca( const GasPopulacao *pop, GasPopulacao *pop_2d, int n_pop, int n_dim ) {
    g_return_if_fail( pop != NULL && pop_2d != NULL );

@@ -305,3 +305,110 @@ void mat_projetar_pca_2d( Matrix X, Matrix autovetores, Matrix X_2d ) {
 
 
 
+
+/**
+ * Calcula a Matriz de Homografia 3x3 usando o algoritmo DLT (Direct Linear Transform).
+ * Transforma o quadrilátero 'src' no quadrilátero 'dst'.
+ *
+ * @param src Matriz 4x2 com os 4 pontos de origem (ex: âncoras encontradas pelo GA).
+ * @param dst Matriz 4x2 com os 4 pontos de destino (ex: gabarito real perfeito).
+ * @param H Matriz 3x3 previamente alocada que receberá os coeficientes da Homografia.
+ * @return int 0 se sucesso, >0 se a matriz for singular (pontos colineares).
+ */
+int mat_homography_dlt( Matrix src, Matrix dst, Matrix H ) {
+   if ( src.rows != 4 || src.cols != 2 || dst.rows != 4 || dst.cols != 2 ) {
+      fprintf( stderr, "Erro: As matrizes src e dst devem ter dimensões 4x2!\n" );
+      return -1;
+   }
+   if ( H.rows != 3 || H.cols != 3 ) {
+      fprintf( stderr, "Erro: A matriz H deve ter dimensão 3x3!\n" );
+      return -1;
+   }
+
+   // Sistema Linear A * h = B, onde A(8x8) e B(8x1)
+   double A_data[64] = { 0.0 };
+   double B_data[8]  = { 0.0 };
+   int ipiv[8]; // Array de pivoteamento exigido pelo LAPACKE
+
+   // Preenchendo as 8 equações a partir dos 4 pontos
+   for ( int i = 0; i < 4; i++ ) {
+      double x = src.data[i * 2 + 0];
+      double y = src.data[i * 2 + 1];
+      double u = dst.data[i * 2 + 0];
+      double v = dst.data[i * 2 + 1];
+
+      // Linha par: Equação correspondente à coordenada u
+      A_data[( 2 * i ) * 8 + 0] = x;
+      A_data[( 2 * i ) * 8 + 1] = y;
+      A_data[( 2 * i ) * 8 + 2] = 1.0;
+      A_data[( 2 * i ) * 8 + 3] = 0.0;
+      A_data[( 2 * i ) * 8 + 4] = 0.0;
+      A_data[( 2 * i ) * 8 + 5] = 0.0;
+      A_data[( 2 * i ) * 8 + 6] = -x * u;
+      A_data[( 2 * i ) * 8 + 7] = -y * u;
+      B_data[2 * i] = u;
+
+      // Linha ímpar: Equação correspondente à coordenada v
+      A_data[( 2 * i + 1 ) * 8 + 0] = 0.0;
+      A_data[( 2 * i + 1 ) * 8 + 1] = 0.0;
+      A_data[( 2 * i + 1 ) * 8 + 2] = 0.0;
+      A_data[( 2 * i + 1 ) * 8 + 3] = x;
+      A_data[( 2 * i + 1 ) * 8 + 4] = y;
+      A_data[( 2 * i + 1 ) * 8 + 5] = 1.0;
+      A_data[( 2 * i + 1 ) * 8 + 6] = -x * v;
+      A_data[( 2 * i + 1 ) * 8 + 7] = -y * v;
+      B_data[2 * i + 1] = v;
+   }
+
+   // Resolve o sistema linear real A * X = B
+   // LAPACK_ROW_MAJOR: Formato C
+   // N = 8 (Ordem), NRHS = 1 (colunas do B)
+   // O resultado X irá sobrescrever o vetor B_data!
+   int info = LAPACKE_dgesv( LAPACK_ROW_MAJOR, 8, 1, A_data, 8, ipiv, B_data, 1 );
+
+   if ( info > 0 ) {
+      fprintf( stderr, "Erro: LAPACKE falhou, geometria impossível (pontos colineares)!\n" );
+      return info;
+   }
+
+   // Monta a matriz H (3x3) final a partir do vetor solução
+   for ( int i = 0; i < 8; i++ ) {
+      H.data[i] = B_data[i];
+   }
+   // O fator de escala homogênea (h22) é sempre 1.0
+   H.data[8] = 1.0;
+
+   return 0;
+}
+
+
+/**
+ * Aplica a Matriz de Homografia H a uma matriz de pontos 2D (Transformação de Perspectiva).
+ *
+ * @param src Matriz N x 2 contendo os pontos de entrada.
+ * @param H Matriz de Homografia 3 x 3.
+ * @param dst Matriz N x 2 previamente alocada para os pontos transformados.
+ */
+void mat_apply_homography( Matrix src, Matrix H, Matrix dst ) {
+   if ( src.cols != 2 || dst.cols != 2 || src.rows != dst.rows ) {
+      fprintf( stderr, "Erro: Dimensões incompatíveis na projeção!\n" );
+      return;
+   }
+
+   for ( int i = 0; i < src.rows; i++ ) {
+      double x = src.data[i * 2 + 0];
+      double y = src.data[i * 2 + 1];
+
+      // Multiplicação por coordenadas homogêneas
+      double w = H.data[6] * x + H.data[7] * y + H.data[8];
+
+      // Proteção matemática contra divisão por zero acidental
+      if ( w == 0.0 ) w = 1e-8;
+
+      double u = ( H.data[0] * x + H.data[1] * y + H.data[2] ) / w;
+      double v = ( H.data[3] * x + H.data[4] * y + H.data[5] ) / w;
+
+      dst.data[i * 2 + 0] = u;
+      dst.data[i * 2 + 1] = v;
+   }
+}

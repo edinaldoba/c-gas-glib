@@ -12,9 +12,10 @@ gnuplot/*.txt
 !gnuplot/.gitkeep
 
 img/*
-!img/imgh.ppm
-!img/imgv.ppm
-!img/imgv_ruido_severo.ppm
+!img/imgh.png
+!img/imgv.png
+!img/imgv_ruido_severo.png
+!img/img_distorcida.png
 
 # IDES e Editores de Código
 compile_flags.txt

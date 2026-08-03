@@ -21,7 +21,9 @@ typedef struct {
 // ============================================================================
 // ASSINATURAS DE FUNÇÕES
 // ============================================================================
-GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
-                              const GasLimites *lim, gboolean feedback_visual );
+GasLimites *v_gas_limites( const int nrow, const int ncol, const int n_obj );
+
+GasPopulacao *v_gas_pipeline( const ImagemCinza *img, GasParametros *par,
+                              const GasLimites *lim, const gboolean feedback_visual );
 
 #endif // V_GAS_H

@@ -15,10 +15,110 @@
 
 
 
+/**
+ * @brief Obtém o limiar de preto adaptativo amostrando a População Inicial (LHS).
+ *
+ * @param img Ponteiro para a imagem em escala de cinza.
+ * @param pop Vetor com a população inicializada pelo Hipercubo Latino.
+ * @param par Estrutura de parâmetros contendo o tamanho n_pop.
+ * @return int Limiar dinâmico [15, 80] para considerar um pixel como "escuro/tinta".
+ */
+// Função de comparação para o qsort
+// static int comparar_int( const void *a, const void *b ) {
+//    return ( *( int * )a - *( int * )b );
+// }
+// static int obter_limiar_preto_dinamico( const ImagemCinza *img, const GasPopulacao *pop, const GasParametros *par ) {
+//    g_return_val_if_fail( img && img->image && pop && par && par->n_pop > 0, 20 );
+//
+//    // Aloca um array temporário no stack para os tons coletados
+//    int *amostras = g_newa( int, par->n_pop );
+//    int n_validos = 0;
+//
+//    // 1. Extrai o tom do pixel em cada ponto inicializado pelo LHS
+//    for ( int i = 0; i < par->n_pop; i++ ) {
+//       int cx = ( int )round( pop[i].x[0] );
+//       int cy = ( int )round( pop[i].x[1] );
+//
+//       // Proteção de limites de borda
+//       if ( cx >= 0 && cx < img->ncol && cy >= 0 && cy < img->nrow ) {
+//          amostras[n_validos++] = img->image[cy][cx];
+//       }
+//    }
+//
+//    if ( n_validos == 0 ) return 20; // Fallback de segurança
+//
+//
+//
+//    // 2. Ordena os tons amostrados (do mais escuro para o mais claro)
+//    qsort( amostras, n_validos, sizeof( int ), comparar_int );
+//
+//    // 3. Pegamos o tom do percentil 5% (índice k) das amostras mais escuras
+//    int idx_percentil = ( int )( n_validos * 0.05 );
+//    int tom_tinta_amostrado = amostras[idx_percentil];
+//
+//    // 4. Calculamos o limiar dando uma margem de +25 tons acima da tinta detectada
+//    int limiar_dinamico = tom_tinta_amostrado + 25;
+//
+//    // Trava o limiar em uma faixa física plausível [15, 80]
+//    // - Nunca menor que 15 (para evitar falso positivo em papéis brancos demais)
+//    // - Nunca maior que 80 (para não considerar sombras intensas de celular como tinta)
+//    return CLAMP( limiar_dinamico, 15, 80 );
+// }
+
+
+
+// ============================================================================
+// FUNÇÃO QUE CALCULA OS LIMITES DOS 4 QUADRANTES (4 OBJETIVOS)
+// ============================================================================
+GasLimites *v_gas_limites( const int nrow, const int ncol, const int n_obj ) {
+   // Validação estrita padrão GLib
+   // Como esta função desenha limites para 4 quadrantes, travamos n_obj em 4.
+   g_return_val_if_fail( nrow > 0 && ncol > 0 && n_obj == 4, NULL );
+
+   int n_dim = 2; // 0: eixo X (colunas), 1: eixo Y (linhas)
+
+   // Calcula os pontos médios e limites máximos da imagem
+   double mid_x = ( ncol - 1.0 ) / 2.0;
+   double mid_y = ( nrow - 1.0 ) / 2.0;
+   double max_x = ncol - 1.0;
+   double max_y = nrow - 1.0;
+
+   // Constantes espaciais (Devem ter tamanho constante [4] para inicializar com chaves)
+   // k=0 (Topo-Esquerda)   | k=1 (Topo-Direita)
+   // ----------------------+----------------------
+   // k=3 (Base-Esquerda)   | k=2 (Base-Direita)
+   double ini_x[4] = { 0.0,   mid_x, mid_x, 0.0   };
+   double fim_x[4] = { mid_x, max_x, max_x, mid_x };
+
+   double ini_y[4] = { 0.0,   0.0,   mid_y, mid_y };
+   double fim_y[4] = { mid_y, mid_y, max_y, max_y };
+
+   // Aloca o array principal de limites usando a variável n_obj
+   GasLimites *lim = g_new0( GasLimites, n_obj );
+
+   for ( int k = 0; k < n_obj; k++ ) {
+      lim[k].n_dim = n_dim;
+      lim[k].ini   = g_new0( double, n_dim );
+      lim[k].fim   = g_new0( double, n_dim );
+
+      // Preenche os limites da Dimensão 0 (Eixo X)
+      lim[k].ini[0] = ini_x[k];
+      lim[k].fim[0] = fim_x[k];
+
+      // Preenche os limites da Dimensão 1 (Eixo Y)
+      lim[k].ini[1] = ini_y[k];
+      lim[k].fim[1] = fim_y[k];
+   }
+
+   return lim;
+}
+
+
+
 // ============================================================================
 // FUNÇÃO DE FITNESS LOCAL (ALTAMENTE OTIMIZADA)
 // ============================================================================
-static double v_fitness_local( const double *x, const ImagemCinza *img, const int k ) {
+static double v_fitness_local( const double *x, const ImagemCinza *img, const int limiar, const int k ) {
    g_return_val_if_fail( x && img && img->image, 0.0 );
 
    ( void )k;
@@ -35,7 +135,7 @@ static double v_fitness_local( const double *x, const ImagemCinza *img, const in
    int raio_max = 40;
    double fitness_total = 0.0;
 
-   int centro_eh_preto = ( img->image[cy][cx] < 10 );
+   int centro_eh_preto = ( img->image[cy][cx] < limiar );
 
    // NOVO: Array para guardar o 'r' da última transição em cada uma das 4 direções
    int ultimo_r[4] = { 0, 0, 0, 0 };
@@ -50,7 +150,7 @@ static double v_fitness_local( const double *x, const ImagemCinza *img, const in
 
          if ( px < 0 || px >= img->ncol || py < 0 || py >= img->nrow ) break;
 
-         int pixel_escuro = ( img->image[py][px] < 10 );
+         int pixel_escuro = ( img->image[py][px] < limiar );
 
          if ( pixel_escuro != estado_atual ) {
             transicoes++;
@@ -70,6 +170,8 @@ static double v_fitness_local( const double *x, const ImagemCinza *img, const in
    double fitness_normalizado = fitness_total / 20.0;
 
    if ( !centro_eh_preto ) {
+      // GG, deixe-me te dar um feedback (essa penalização mudou de 0.75 para 0.90)
+      // Afinei este parâmetro a luz dos testes em massa
       fitness_normalizado *= 0.75;
    }
    // NOVO: Desempate do Platô! Só aplicamos se ele encontrou o alvo (20 pontos)
@@ -80,9 +182,7 @@ static double v_fitness_local( const double *x, const ImagemCinza *img, const in
       int erro_x = abs( ultimo_r[0] - ultimo_r[1] ); // Diferença entre Leste e Oeste
       int erro_y = abs( ultimo_r[2] - ultimo_r[3] ); // Diferença entre Sul e Norte
 
-      // Aplicamos uma penalidade minúscula (0.0001 por pixel de assimetria)
-      // Ex: Se o candidato está 3 pixels pro lado direito, erro_x = 6. Penalidade = 0.0006.
-      // O fitness cai de 1.0000 para 0.9994.
+      // O número 0.015 também foi um ajuste fino verificado nos testes em massa
       double penalidade_simetria = ( erro_x + erro_y ) * 0.015;
 
       // O centro absoluto mantém 1.0000 (ou o mais próximo disso possível)
@@ -310,7 +410,7 @@ static double v_fitness_geometrico( const double *x, const GasPopulacao *elite, 
 // ============================================================================
 
 static double v_gas_fitness_coevolutivo( const double *x, const GasPopulacao *elite, const ImagemCinza *img,
-                                         const double w1, const int k ) {
+      const double w1, const int limiar, const int k ) {
    g_return_val_if_fail( x && img, 0.0 );
 
    // Pesos da combinação linear para gerações > 0 (podem ser ajustados depois)
@@ -319,7 +419,7 @@ static double v_gas_fitness_coevolutivo( const double *x, const GasPopulacao *el
 
    // 1. O fitness local sempre é calculado, independentemente da geração
    // Avalia o contraste/textura da imagem exatamente na coordenada 'x'
-   double f_local = v_fitness_local( x, img, k );
+   double f_local = v_fitness_local( x, img, limiar, k );
 
    // 2. GERAÇÃO 0: Se a elite for NULL, não há como calcular a geometria
    if ( elite == NULL ) {
@@ -342,18 +442,19 @@ static double v_gas_fitness_coevolutivo( const double *x, const GasPopulacao *el
 // ============================================================================
 // PIPELINE PRINCIPAL DE COEVOLUÇÃO
 // ============================================================================
-GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
-                              const GasLimites *lim, gboolean feedback_visual ) {
-   g_return_val_if_fail( par && lim, NULL );
+GasPopulacao *v_gas_pipeline( const ImagemCinza *img, GasParametros *par,
+                              const GasLimites *lim, const gboolean feedback_visual ) {
+   g_return_val_if_fail( img && par && lim, NULL );
 
-   // Alocação da matriz de dispersão
+   // Alocação da matriz de dispersão e populações
    double **coef_disp = g_new0( double*, par->n_obj );
-
    GasPopulacao **pop = g_new0( GasPopulacao*, par->n_obj );
    GasGenitores **gen = g_new0( GasGenitores*, par->n_obj );
 
    double disp_max = 0.0;
+   g_autofree double *dispersao_media = g_new0( double, par->n_obj );
 
+   // Inicialização e cálculo da Dispersão Máxima Teórica (Uniforme)
    for ( int k = 0; k < par->n_obj; k++ ) {
       coef_disp[k] = g_new0( double, lim[k].n_dim );
 
@@ -364,44 +465,32 @@ GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
       pop[k] = gas_alocar_populacao( par->n_pop, lim[k].n_dim );
       gen[k] = gas_alocar_genitores( par->n_gen, lim[k].n_dim );
 
-      gas_populacao_inicial( pop[k], par, &lim[k] );
-   }
+      gas_populacao_inicial_uniforme( pop[k], par, &lim[k] );
 
-   disp_max = disp_max / ( lim[0].n_dim * par->n_obj );
-
-   GasPopulacao *elite = gas_alocar_populacao( par->n_obj, lim[0].n_dim );
-
-   int geracao = 0;
-   g_autofree double *dispersao_media = g_new0( double, par->n_obj );
-   double dispersao_media_geral = 0.0;
-
-   // Geração 0 (Avaliação Exploratória)
-   for ( int k = 0; k < par->n_obj; k++ ) {
+      // A dispersão inicial já é pré-calculada no setup
       gas_coeficiente_dispersao( pop[k], coef_disp[k], par, lim[k].n_dim );
       dispersao_media[k] = gas_mean( coef_disp[k], lim[k].n_dim );
+   }
 
-      // ========================================================================================
-      // ⚠️ ALERTA PARA O EDINALDO DO FUTURO ⚠️
-      // NUNCA tente calcular um 'w1' individual para cada objetivo (k) baseado apenas
-      // na sua dispersão isolada! O peso 'w1' DEVE ser estritamente GLOBAL.
-      //
-      // Por que manter 'dispersao_media_geral'?
-      // O sucesso da Coevolução (Equilíbrio de Nash) exige que TODAS as sub-populações
-      // obedeçam às mesmas "regras do jogo" simultaneamente. Se um objetivo usa w1 alto
-      // (focado na imagem local) e outro usa w1 baixo (focado na geometria), o aspecto
-      // colaborativo é penalizado. A geometria do gabarito quebra, a ancoragem deforma
-      // e a eficácia fantástica (>99.8%) do GA despenca!
-      // ========================================================================================
+   disp_max /= ( lim[0].n_dim * par->n_obj );
 
-      dispersao_media_geral = gas_mean( dispersao_media, par->n_obj );
-      double proporcao = dispersao_media_geral / disp_max;
+   GasPopulacao *elite = gas_alocar_populacao( par->n_obj, lim[0].n_dim );
+   int geracao = 0;
+   double dispersao_media_global = 0.0;
 
-      // w1 inicia em ~0.95 e cai de forma igual e sincronizada para as 4 âncoras.
-      // O CLAMP garante matematicamente que o peso nunca saia de [0, 1].
-      double w1 = CLAMP( 0.95 * proporcao, 0.0, 1.0 );
+   // =========================================================================
+   // GERAÇÃO 0: AVALIAÇÃO EXPLORATÓRIA
+   // =========================================================================
 
+   // Passo 1: Calcular a dispersão global e o w1 oficial da Geração 0
+   dispersao_media_global = gas_mean( dispersao_media, par->n_obj );
+   double proporcao_inicial = dispersao_media_global / disp_max;
+   double w1 = CLAMP( 0.90 * proporcao_inicial + 0.10, 0.0, 1.0 );
+
+   // Passo 2: Avaliar todo mundo com o w1 perfeitamente sincronizado
+   for ( int k = 0; k < par->n_obj; k++ ) {
       for ( int i = 0; i < par->n_pop; i++ ) {
-         pop[k][i].fitness = v_gas_fitness_coevolutivo( pop[k][i].x, NULL, img, w1, k );
+         pop[k][i].fitness = v_gas_fitness_coevolutivo( pop[k][i].x, NULL, img, w1, par->limiar, k );
       }
       qsort( pop[k], par->n_pop, sizeof( GasPopulacao ), gas_comparar_objetivo_max );
 
@@ -409,27 +498,34 @@ GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
       elite[k].fitness = pop[k][par->n_pop - 1].fitness;
    }
 
-   //--------------- FEEDBACK VISUAL ------------------------//
+   //--------------- FEEDBACK VISUAL (GERAÇÃO 0) ------------------------//
    FILE *p_dispersao = NULL;
    FILE *p_fitness = NULL;
    g_autofree double *fitness_elite = NULL;
+
    if ( feedback_visual ) {
       p_dispersao = fopen( "gnuplot/D.pts", "w" );
       p_fitness   = fopen( "gnuplot/E.pts", "w" );
       fitness_elite = g_new0( double, par->n_obj );
+
       for ( int k = 0; k < par->n_obj; k++ ) {
          fitness_elite[k] = elite[k].fitness;
          gas_gravar_pontos( pop[k], par->n_pop, geracao );
       }
       fprintf( p_fitness,   "%d %.8f\n", geracao, gas_mean( fitness_elite, par->n_obj ) );
-      fprintf( p_dispersao, "%d %.8f\n", geracao, dispersao_media_geral );
+      fprintf( p_dispersao, "%d %.8f\n", geracao, dispersao_media_global );
    }
-   //-------------------------------------------------------//
+   //--------------------------------------------------------------------//
 
-   // Laço Evolutivo
+   // =========================================================================
+   // LAÇO EVOLUTIVO CO-EVOLUTIVO (Equilíbrio de Nash)
+   // =========================================================================
    do {
       geracao++;
 
+      // ----------------------------------------------------------------------
+      // ETAPA 1: DINÂMICA POPULACIONAL (Reprodução e Movimento)
+      // ----------------------------------------------------------------------
       for ( int k = 0; k < par->n_obj; k++ ) {
          gas_torneio( pop[k], gen[k], lim[k].n_dim, par, gas_comparar_objetivo_max );
          gas_crossover_aritmetico( pop[k], gen[k], lim[k].n_dim, par );
@@ -437,37 +533,58 @@ GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
 
          gas_coeficiente_dispersao( pop[k], coef_disp[k], par, lim[k].n_dim );
          dispersao_media[k] = gas_mean( coef_disp[k], lim[k].n_dim );
+      }
 
-         // A proporção normalizada: Inicia próxima de 1.0 e cai em direção a 0
-         dispersao_media_geral = gas_mean( dispersao_media, par->n_obj );
-         double proporcao = dispersao_media_geral / disp_max;
+      // ----------------------------------------------------------------------
+      // ETAPA 2: SINCRONIZAÇÃO TÉRMICA GLOBAL (O W1 Universal da Geração)
+      // ----------------------------------------------------------------------
+      // ========================================================================================
+      // ⚠️ ALERTA PARA O EDINALDO DO FUTURO ⚠️
+      // NUNCA tente calcular um 'w1' individual para cada objetivo (k) baseado apenas
+      // na sua dispersão isolada! O peso 'w1' DEVE ser estritamente GLOBAL.
+      //
+      // Por que manter 'dispersao_media_global'?
+      // O sucesso da Coevolução (Equilíbrio de Nash) exige que TODAS as sub-populações
+      // obedeçam às mesmas "regras do jogo" simultaneamente. Se um objetivo usa w1 alto
+      // (focado na imagem local) e outro usa w1 baixo (focado na geometria), o aspecto
+      // colaborativo é penalizado. A geometria do gabarito quebra, a ancoragem deforma
+      // e a eficácia fantástica (>99.8%) do GA despenca!
+      // ========================================================================================
+      dispersao_media_global = gas_mean( dispersao_media, par->n_obj );
+      double proporcao = dispersao_media_global / disp_max;
+      w1 = CLAMP( 0.90 * proporcao + 0.10, 0.0, 1.0 );
 
-         // w1 inicia em ~0.9 e cai. O CLAMP garante matematicamente que o peso nunca saia de [0, 1]
-         double w1 = CLAMP( 0.95 * proporcao, 0.0, 1.0 );
+      // ----------------------------------------------------------------------
+      // ETAPA 3: AVALIAÇÃO E EQUILÍBRIO DE NASH (Via Gauss-Seidel)
+      // ----------------------------------------------------------------------
+      for ( int k = 0; k < par->n_obj; k++ ) {
 
-         for ( int i = 0; i < par->n_gen; i++ ) { // GG, isso estava errado a dias. Não se avalia membros antigos da população
-            pop[k][i].fitness = v_gas_fitness_coevolutivo( pop[k][i].x, elite, img, w1, k );
+         // Avalia apenas os filhos recém-gerados
+         for ( int i = 0; i < par->n_gen; i++ ) {
+            pop[k][i].fitness = v_gas_fitness_coevolutivo( pop[k][i].x, elite, img, w1, par->limiar, k );
          }
          qsort( pop[k], par->n_pop, sizeof( GasPopulacao ), gas_comparar_objetivo_max );
 
+         // Atualiza o Elite DESTE grupo (Gauss-Seidel)
          memcpy( elite[k].x, pop[k][par->n_pop - 1].x, lim[k].n_dim * sizeof( double ) );
          elite[k].fitness = pop[k][par->n_pop - 1].fitness;
       }
 
-      //--------------- FEEDBACK VISUAL ------------------------//
+      //--------------- FEEDBACK VISUAL (FIM DA GERAÇÃO) ------------------------//
       if ( feedback_visual ) {
          for ( int k = 0; k < par->n_obj; k++ ) {
             fitness_elite[k] = elite[k].fitness;
             gas_gravar_pontos( pop[k], par->n_pop, geracao );
          }
          fprintf( p_fitness,   "%d %.8f\n", geracao, gas_mean( fitness_elite, par->n_obj ) );
-         fprintf( p_dispersao, "%d %.8f\n", geracao, dispersao_media_geral );
+         fprintf( p_dispersao, "%d %.8f\n", geracao, dispersao_media_global );
       }
-      //--------------------------------------------------------//
+      //-------------------------------------------------------------------------//
 
-   } while ( dispersao_media_geral > par->toleracia && geracao < 100 );
+   } while ( dispersao_media_global > par->toleracia && geracao < par->max_geracoes );
 
-   //--------------- FEEDBACK VISUAL ------------------------//
+
+   //--------------- FEEDBACK VISUAL (RESUMO FINAL) ------------------------//
    if ( feedback_visual ) {
       v_gas_display_terminal( elite, dispersao_media, geracao );
 
@@ -487,11 +604,11 @@ GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
       if ( p_fitness )   fclose( p_fitness );
       if ( p_dispersao ) fclose( p_dispersao );
    }
-   //--------------------------------------------------------//
+   //------------------------------------------------------------------------//
 
-   // ------------------------------------------------------------------------
+   // =========================================================================
    // LIMPEZA DE RECURSOS DO PIPELINE
-   // ------------------------------------------------------------------------
+   // =========================================================================
    for ( int k = 0; k < par->n_obj; k++ ) {
       g_free( coef_disp[k] );
       gas_liberar_populacao( pop[k], par->n_pop );
@@ -501,6 +618,9 @@ GasPopulacao *v_gas_pipeline( ImagemCinza *img, const GasParametros *par,
    g_free( pop );
    g_free( gen );
    g_free( coef_disp );
+
+   // Registra o número de gerações no parâmetro
+   par->total_geracoes += geracao;
 
    // Retorna as âncoras limpas e seguras
    return elite;

@@ -1,12 +1,29 @@
-# Executáveis finais
+# =====================================================================
+# 1. EXECUTÁVEIS FINAIS
+# =====================================================================
 TARGET_GAS   = gas
 TARGET_VGAS  = v_gas
 
-# Compilador e Flags
-CC      = gcc
-CFLAGS  = -Wall -Wextra -O3 -fopenmp $(shell pkg-config --cflags glib-2.0)
-LIBS    = $(shell pkg-config --libs glib-2.0) -llapacke -llapack -lblas -lm
+# =====================================================================
+# 2. PACOTES E DEPENDÊNCIAS (GLib e GDK-Pixbuf)
+# =====================================================================
+PKG_DEPS   = glib-2.0 gdk-pixbuf-2.0
 
+PKG_CFLAGS = $(shell pkg-config --cflags $(PKG_DEPS))
+PKG_LIBS   = $(shell pkg-config --libs $(PKG_DEPS))
+
+# =====================================================================
+# 3. COMPILADOR E FLAGS
+# =====================================================================
+CC      = gcc
+CFLAGS  = -Wall -Wextra -O3 -fopenmp $(PKG_CFLAGS)
+
+# Linkagem: Bibliotecas do pkg-config + Álgebra Linear + Math
+LIBS    = $(PKG_LIBS) -llapacke -llapack -lblas -lm
+
+# =====================================================================
+# 4. FONTES E OBJETOS
+# =====================================================================
 # Fontes comuns compartilhados por ambos os projetos
 COMMON_SRCS = gas.c funcoes.c matriz.c gnuplot.c
 COMMON_OBJS = $(COMMON_SRCS:.c=.o)
@@ -18,6 +35,9 @@ GAS_OBJS  = $(GAS_SRCS:.c=.o)
 VGAS_SRCS = v_main.c v_gas.c $(COMMON_SRCS)
 VGAS_OBJS = $(VGAS_SRCS:.c=.o)
 
+# =====================================================================
+# 5. REGRAS DE COMPILAÇÃO E LINKAGEM
+# =====================================================================
 # Regra padrão: compila os dois executáveis
 all: build_dir $(TARGET_GAS) $(TARGET_VGAS)
 
@@ -29,20 +49,23 @@ build_dir:
 $(TARGET_GAS): $(GAS_OBJS)
 	$(CC) $(GAS_OBJS) -o $@ $(CFLAGS) $(LIBS)
 	@echo "----------------------------------------"
-	@echo "GA Padrão compilado: ./$(TARGET_GAS)"
+	@echo "✔ GA Padrão compilado: ./$(TARGET_GAS)"
 	@echo "----------------------------------------"
 
 # Linkagem do GA Co-evolutivo
 $(TARGET_VGAS): $(VGAS_OBJS)
 	$(CC) $(VGAS_OBJS) -o $@ $(CFLAGS) $(LIBS)
 	@echo "----------------------------------------"
-	@echo "GA Co-evolutivo compilado: ./$(TARGET_VGAS)"
+	@echo "✔ GA Co-evolutivo compilado: ./$(TARGET_VGAS)"
 	@echo "----------------------------------------"
 
 # Compilação genérica dos objetos (.c -> .o)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# =====================================================================
+# 6. COMANDOS UTILITÁRIOS (Execução e Gráficos)
+# =====================================================================
 # Executa o GA Padrão e gera os gráficos
 run: $(TARGET_GAS)
 	@rm -f gnuplot/*
@@ -62,6 +85,6 @@ vrun: $(TARGET_VGAS)
 # Limpeza completa de todos os objetos e executáveis
 clean:
 	rm -f *.o $(TARGET_GAS) $(TARGET_VGAS) gnuplot/*
-	@echo "Limpeza concluída."
+	@echo "✨ Limpeza concluída."
 
 .PHONY: all run vrun clean build_dir

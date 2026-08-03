@@ -37,7 +37,7 @@ int main( void ) {
 
    // Quando o feedback_visual é TRUE, temos uma execução normal de gas_pipeline() com feedback visual no gnuplot
    // Quando o feedback_visual é FALSE, executamos um teste em paralelo com 10 mil execuções de gas_pipeline()
-   gboolean feedback_visual = TRUE;
+   gboolean feedback_visual = FALSE;
 
    // Estruturas base e ponteiros para as funções dinâmicas
    GasParametros par = { .rand = rand_context };

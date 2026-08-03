@@ -48,6 +48,10 @@ void mat_centralizar_na_origem( Matrix X, Matrix media );
 
 void mat_projetar_pca_2d( Matrix X, Matrix autovetores, Matrix X_2d );
 
+int mat_homography_dlt( Matrix src, Matrix dst, Matrix H );
+
+void mat_apply_homography( Matrix src, Matrix H, Matrix dst );
+
 
 
 
